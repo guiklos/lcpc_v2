@@ -10,71 +10,75 @@ const Pedidos = () => {
   const [showForm, setShowForm] = useState(false);
   const [newPedido, setNewPedido] = useState({
     description: '',
-    totalValue: '',
+    totalValue: 0,
     shippingDate: '',
     expectedDeliveryDate: '',
     state: '',
     nInstallments: '',
     fkUserId: '',
-    fkClientId: ''
+    fkClientId: '',
+    items: []
   });
   const [users, setUsers] = useState([]);
   const [clients, setClients] = useState([]);
+  const [itemsOrdem, setItemsOrdem] = useState([]);
+  const [products, setProducts] = useState([]);
+  const [confirmDelete, setConfirmDelete] = useState(null);
 
   useEffect(() => {
-    const fetchPedidos = async () => {
+    const fetchData = async () => {
       try {
-        const response = await axios.get('http://localhost:5188/Order');
-        setPedidos(response.data);
-        console.log('Pedidos:', response.data); // Debug
+        const [pedidosRes, usersRes, clientsRes, itemsRes, productsRes] = await Promise.all([
+          axios.get('http://localhost:5188/Order'),
+          axios.get('http://localhost:5188/User'),
+          axios.get('http://localhost:5188/Client'),
+          axios.get('http://localhost:5188/ItemOrder'),
+          axios.get('http://localhost:5188/Product')
+        ]);
+        setPedidos(pedidosRes.data);
+        setUsers(usersRes.data);
+        setClients(clientsRes.data);
+        setItemsOrdem(itemsRes.data);
+        setProducts(productsRes.data);
       } catch (err) {
-        setError('Erro ao carregar os pedidos');
+        setError('Erro ao carregar dados');
       } finally {
         setLoading(false);
       }
     };
 
-    const fetchUsers = async () => {
-      try {
-        const response = await axios.get('http://localhost:5188/User');
-        setUsers(response.data);
-        console.log('Users:', response.data); // Debug
-      } catch (err) {
-        setError('Erro ao carregar os usuários');
-      }
-    };
-
-    const fetchClients = async () => {
-      try {
-        const response = await axios.get('http://localhost:5188/Client');
-        setClients(response.data);
-        console.log('Clients:', response.data); // Debug
-      } catch (err) {
-        setError('Erro ao carregar os clientes');
-      }
-    };
-
-    fetchPedidos();
-    fetchUsers();
-    fetchClients();
+    fetchData();
   }, []);
 
-  const formatDate = (date) => {
-    return date ? new Date(date).toISOString() : '';
-  };
+  const formatDate = (date) => date ? new Date(date).toISOString() : '';
+
+  const calculateTotalValue = (items) => items.reduce((total, item) => total + (item.quantity * item.itemValue), 0);
 
   const handleInputChange = (field, value) => {
-    setEditingPedido((prevPedido) => ({
-      ...prevPedido,
-      [field]: value
-    }));
+    setEditingPedido(prev => ({ ...prev, [field]: value }));
   };
 
   const handleNewInputChange = (field, value) => {
-    setNewPedido((prevPedido) => ({
-      ...prevPedido,
-      [field]: value
-    }));
+    setNewPedido(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleItemChange = (index, field, value) => {
+    const updatedItems = [...newPedido.items];
+    updatedItems[index] = { ...updatedItems[index], [field]: value };
+    const newTotalValue = calculateTotalValue(updatedItems);
+    setNewPedido(prev => ({ ...prev, items: updatedItems, totalValue: newTotalValue }));
+  };
+
+  const addItem = () => {
+    setNewPedido(prev => {
+      const newItems = [...prev.items, { fkProductId: '', quantity: 1, itemValue: 0 }];
+      return { ...prev, items: newItems, totalValue: calculateTotalValue(newItems) };
+    });
+  };
+
+  const removeItem = (index) => {
+    const updatedItems = newPedido.items.filter((_, i) => i !== index);
+    setNewPedido(prev => ({ ...prev, items: updatedItems, totalValue: calculateTotalValue(updatedItems) }));
   };
 
   const handleSave = async (pedidoId) => {
@@ -88,7 +92,7 @@ const Pedidos = () => {
       await axios.put(`http://localhost:5188/Order/${pedidoId}`, formattedPedido);
       const response = await axios.get('http://localhost:5188/Order');
       setPedidos(response.data);
-      setEditingPedido(null); // Limpa o pedido em edição
+      setEditingPedido(null);
     } catch (err) {
       setError('Erro ao salvar pedido');
     }
@@ -97,7 +101,8 @@ const Pedidos = () => {
   const handleDelete = async (id) => {
     try {
       await axios.delete(`http://localhost:5188/Order/${id}`);
-      setPedidos((prevPedidos) => prevPedidos.filter((pedido) => pedido.id !== id));
+      setPedidos(prev => prev.filter(pedido => pedido.id !== id));
+      setConfirmDelete(null);
     } catch (err) {
       setError('Erro ao excluir pedido');
     }
@@ -115,18 +120,28 @@ const Pedidos = () => {
         expectedDeliveryDate: formatDate(newPedido.expectedDeliveryDate)
       };
 
-      await axios.post('http://localhost:5188/Order', formattedPedido);
-      const response = await axios.get('http://localhost:5188/Order');
-      setPedidos(response.data);
+      const response = await axios.post('http://localhost:5188/Order', formattedPedido);
+      const createdPedido = response.data;
+
+      for (const item of newPedido.items) {
+        await axios.post('http://localhost:5188/ItemOrder', {
+          ...item,
+          fkOrderId: createdPedido.id
+        });
+      }
+
+      const pedidosResponse = await axios.get('http://localhost:5188/Order');
+      setPedidos(pedidosResponse.data);
       setNewPedido({
         description: '',
-        totalValue: '',
+        totalValue: 0,
         shippingDate: '',
         expectedDeliveryDate: '',
         state: '',
         nInstallments: '',
         fkUserId: '',
-        fkClientId: ''
+        fkClientId: '',
+        items: []
       });
       setShowForm(false);
     } catch (err) {
@@ -134,213 +149,213 @@ const Pedidos = () => {
     }
   };
 
+  const getUserNameById = (userId) => {
+    const user = users.find(user => user.id === userId);
+    return user ? user.username : 'Desconhecido';
+  };
+
+  const getClientNameById = (clientId) => {
+    const client = clients.find(client => client.id === clientId);
+    return client ? client.name : 'Desconhecido';
+  };
+
+  const getProductDetails = (productId) => {
+    const product = products.find(product => product.id === productId);
+    return product ? `${product.name} - ${product.value}` : 'Desconhecido';
+  };
+
+  const filterItemsOrdemByPedido = (pedidoId) => {
+    return itemsOrdem.filter(item => item.fkOrderId === pedidoId);
+  };
+
   if (loading) return <p>Carregando...</p>;
-  if (error) return <p>{error}</p>;
+  if (error) return <p className={styles.error}>{error}</p>;
 
   return (
     <div className={styles.container}>
       <div className={styles.header}>
         <h1>Pedidos</h1>
-        <button onClick={() => setShowForm(true)}>Criar Pedido</button>
+        <button className={styles.createButton} onClick={() => setShowForm(true)}>Criar Pedido</button>
       </div>
       {showForm && (
         <div className={styles.formContainer}>
           <h2>{editingPedido ? 'Editar Pedido' : 'Criar Pedido'}</h2>
           <div className={styles.form}>
-            <input
-              type="text"
-              placeholder="Descrição"
-              value={editingPedido ? editingPedido.description : newPedido.description}
-              onChange={(e) => (editingPedido ? handleInputChange('description', e.target.value) : handleNewInputChange('description', e.target.value))}
-            />
-            <input
-              type="number"
-              placeholder="Valor Total"
-              value={editingPedido ? editingPedido.totalValue : newPedido.totalValue}
-              onChange={(e) => (editingPedido ? handleInputChange('totalValue', e.target.value) : handleNewInputChange('totalValue', e.target.value))}
-            />
-            <input
-              type="datetime-local"
-              placeholder="Data de Envio"
-              value={editingPedido ? editingPedido.shippingDate?.split('T')[0] + 'T' + (editingPedido.shippingDate.split('T')[1] || '00:00:00') : newPedido.shippingDate?.split('T')[0] + 'T' + (newPedido.shippingDate.split('T')[1] || '00:00:00')}
-              onChange={(e) => (editingPedido ? handleInputChange('shippingDate', e.target.value) : handleNewInputChange('shippingDate', e.target.value))}
-            />
-            <input
-              type="datetime-local"
-              placeholder="Data de Entrega Esperada"
-              value={editingPedido ? editingPedido.expectedDeliveryDate?.split('T')[0] + 'T' + (editingPedido.expectedDeliveryDate.split('T')[1] || '00:00:00') : newPedido.expectedDeliveryDate?.split('T')[0] + 'T' + (newPedido.expectedDeliveryDate.split('T')[1] || '00:00:00')}
-              onChange={(e) => (editingPedido ? handleInputChange('expectedDeliveryDate', e.target.value) : handleNewInputChange('expectedDeliveryDate', e.target.value))}
-            />
-            <input
-              type="text"
-              placeholder="Estado"
-              value={editingPedido ? editingPedido.state : newPedido.state}
-              onChange={(e) => (editingPedido ? handleInputChange('state', e.target.value) : handleNewInputChange('state', e.target.value))}
-            />
-            <input
-              type="number"
-              placeholder="Número de Parcelas"
-              value={editingPedido ? editingPedido.nInstallments : newPedido.nInstallments}
-              onChange={(e) => (editingPedido ? handleInputChange('nInstallments', e.target.value) : handleNewInputChange('nInstallments', e.target.value))}
-            />
-            <select
-              value={editingPedido ? editingPedido.fkUserId : newPedido.fkUserId}
-              onChange={(e) => (editingPedido ? handleInputChange('fkUserId', e.target.value) : handleNewInputChange('fkUserId', e.target.value))}
-            >
-              <option value="">Selecione o Usuário</option>
-              {users.map((user) => (
-                <option key={user.id} value={user.id}>
-                  {user.username}
-                </option>
+            <label>
+              Descrição
+              <input
+                type="text"
+                placeholder="Descrição"
+                value={editingPedido ? editingPedido.description : newPedido.description}
+                onChange={(e) => (editingPedido ? handleInputChange('description', e.target.value) : handleNewInputChange('description', e.target.value))}
+              />
+            </label>
+            <label>
+              Valor Total
+              <input
+                type="number"
+                placeholder="Valor Total"
+                value={editingPedido ? editingPedido.totalValue : newPedido.totalValue}
+                readOnly
+              />
+            </label>
+            <label>
+              Data de Envio
+              <input
+                type="datetime-local"
+                value={editingPedido ? editingPedido.shippingDate?.split('T')[0] + 'T' + (editingPedido.shippingDate.split('T')[1] || '00:00:00') : newPedido.shippingDate?.split('T')[0] + 'T' + (newPedido.shippingDate.split('T')[1] || '00:00:00')}
+                onChange={(e) => (editingPedido ? handleInputChange('shippingDate', e.target.value) : handleNewInputChange('shippingDate', e.target.value))}
+              />
+            </label>
+            <label>
+              Data de Entrega Esperada
+              <input
+                type="datetime-local"
+                value={editingPedido ? editingPedido.expectedDeliveryDate?.split('T')[0] + 'T' + (editingPedido.expectedDeliveryDate.split('T')[1] || '00:00:00') : newPedido.expectedDeliveryDate?.split('T')[0] + 'T' + (newPedido.expectedDeliveryDate.split('T')[1] || '00:00:00')}
+                onChange={(e) => (editingPedido ? handleInputChange('expectedDeliveryDate', e.target.value) : handleNewInputChange('expectedDeliveryDate', e.target.value))}
+              />
+            </label>
+            <label>
+              Estado
+              <input
+                type="text"
+                placeholder="Estado"
+                value={editingPedido ? editingPedido.state : newPedido.state}
+                onChange={(e) => (editingPedido ? handleInputChange('state', e.target.value) : handleNewInputChange('state', e.target.value))}
+              />
+            </label>
+            <label>
+              Número de Parcelas
+              <input
+                type="number"
+                placeholder="Número de Parcelas"
+                value={editingPedido ? editingPedido.nInstallments : newPedido.nInstallments}
+                onChange={(e) => (editingPedido ? handleInputChange('nInstallments', e.target.value) : handleNewInputChange('nInstallments', e.target.value))}
+              />
+            </label>
+            <label>
+              Usuário
+              <select
+                value={editingPedido ? editingPedido.fkUserId : newPedido.fkUserId}
+                onChange={(e) => (editingPedido ? handleInputChange('fkUserId', e.target.value) : handleNewInputChange('fkUserId', e.target.value))}
+              >
+                <option value="">Selecione o Usuário</option>
+                {users.map((user) => (
+                  <option key={user.id} value={user.id}>
+                    {user.username}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Cliente
+              <select
+                value={editingPedido ? editingPedido.fkClientId : newPedido.fkClientId}
+                onChange={(e) => (editingPedido ? handleInputChange('fkClientId', e.target.value) : handleNewInputChange('fkClientId', e.target.value))}
+              >
+                <option value="">Selecione o Cliente</option>
+                {clients.map((client) => (
+                  <option key={client.id} value={client.id}>
+                    {client.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <div className={styles.itemsContainer}>
+              <h3>Itens</h3>
+              {newPedido.items.map((item, index) => (
+                <div key={index} className={styles.itemRow}>
+                  <select
+                    value={item.fkProductId}
+                    onChange={(e) => handleItemChange(index, 'fkProductId', e.target.value)}
+                  >
+                    <option value="">Selecione o Produto</option>
+                    {products.map((product) => (
+                      <option key={product.id} value={product.id}>
+                        {product.name} - {product.value}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    type="number"
+                    placeholder="Quantidade"
+                    value={item.quantity}
+                    onChange={(e) => handleItemChange(index, 'quantity', e.target.value)}
+                  />
+                  <input
+                    type="number"
+                    placeholder="Valor do Item"
+                    value={item.itemValue}
+                    onChange={(e) => handleItemChange(index, 'itemValue', e.target.value)}
+                  />
+                  <button className={styles.removeButton} onClick={() => removeItem(index)}>Remover Item</button>
+                </div>
               ))}
-            </select>
-            <select
-              value={editingPedido ? editingPedido.fkClientId : newPedido.fkClientId}
-              onChange={(e) => (editingPedido ? handleInputChange('fkClientId', e.target.value) : handleNewInputChange('fkClientId', e.target.value))}
-            >
-              <option value="">Selecione o Cliente</option>
-              {clients.map((client) => (
-                <option key={client.id} value={client.id}>
-                  {client.name}
-                </option>
-              ))}
-            </select>
-            {editingPedido ? (
-              <div>
-                <button onClick={() => handleSave(editingPedido.id)}>Salvar</button>
-                <button onClick={() => setEditingPedido(null)}>Cancelar</button>
-              </div>
-            ) : (
-              <button onClick={handleCreate}>Criar</button>
-            )}
+              <button className={styles.addItemButton} onClick={addItem}>Adicionar Item</button>
+            </div>
+
+            <div className={styles.formActions}>
+              {editingPedido ? (
+                <>
+                  <button className={styles.saveButton} onClick={() => handleSave(editingPedido.id)}>Salvar</button>
+                  <button className={styles.cancelButton} onClick={() => setEditingPedido(null)}>Cancelar</button>
+                </>
+              ) : (
+                <button className={styles.createButton} onClick={handleCreate}>Criar Pedido</button>
+              )}
+            </div>
           </div>
-          <button onClick={() => setShowForm(false)}>Fechar Formulário</button>
         </div>
       )}
-      <div className={styles.tableContainer}>
-        <table className={styles.table}>
-          <thead>
-            <tr>
-              <th>Descrição</th>
-              <th>Valor Total</th>
-              <th>Data de Envio</th>
-              <th>Data de Entrega Esperada</th>
-              <th>Estado</th>
-              <th>Número de Parcelas</th>
-              <th>Usuário</th>
-              <th>Cliente</th>
-              <th>Ações</th>
+      {confirmDelete && (
+        <div className={styles.confirmDelete}>
+          <p>Tem certeza que deseja excluir este pedido?</p>
+          <button className={styles.confirmButton} onClick={() => handleDelete(confirmDelete)}>Confirmar</button>
+          <button className={styles.cancelButton} onClick={() => setConfirmDelete(null)}>Cancelar</button>
+        </div>
+      )}
+      <table className={styles.table}>
+        <thead>
+          <tr>
+            <th>Descrição</th>
+            <th>Valor Total</th>
+            <th>Data de Envio</th>
+            <th>Data de Entrega Esperada</th>
+            <th>Estado</th>
+            <th>Número de Parcelas</th>
+            <th>Nome do Usuário</th>
+            <th>Nome do Cliente</th>
+            <th>Itens da Ordem</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          {pedidos.map((pedido) => (
+            <tr key={pedido.id}>
+              <td>{pedido.description}</td>
+              <td>{pedido.totalValue}</td>
+              <td>{pedido.shippingDate}</td>
+              <td>{pedido.expectedDeliveryDate}</td>
+              <td>{pedido.state}</td>
+              <td>{pedido.nInstallments}</td>
+              <td>{getUserNameById(pedido.fkUserId)}</td>
+              <td>{getClientNameById(pedido.fkClientId)}</td>
+              <td>
+                {filterItemsOrdemByPedido(pedido.id).map((item) => (
+                  <div key={item.id}>
+                    {getProductDetails(item.fkProductId)} (Quantidade: {item.quantity}, Preço: {item.itemValue})
+                  </div>
+                ))}
+              </td>
+              <td>
+                <button className={styles.editButton} onClick={() => handleEdit(pedido)}>Editar</button>
+                <button className={styles.deleteButton} onClick={() => setConfirmDelete(pedido.id)}>Excluir</button>
+              </td>
             </tr>
-          </thead>
-          <tbody>
-            {pedidos.map((pedido) => (
-              <tr key={pedido.id}>
-                <td>{editingPedido?.id === pedido.id ? (
-                  <input
-                    type="text"
-                    value={editingPedido.description}
-                    onChange={(e) => handleInputChange('description', e.target.value)}
-                  />
-                ) : (
-                  pedido.description
-                )}</td>
-                <td>{editingPedido?.id === pedido.id ? (
-                  <input
-                    type="number"
-                    value={editingPedido.totalValue}
-                    onChange={(e) => handleInputChange('totalValue', e.target.value)}
-                  />
-                ) : (
-                  pedido.totalValue
-                )}</td>
-                <td>{editingPedido?.id === pedido.id ? (
-                  <input
-                    type="datetime-local"
-                    value={editingPedido.shippingDate?.split('T')[0] + 'T' + (editingPedido.shippingDate.split('T')[1] || '00:00:00')}
-                    onChange={(e) => handleInputChange('shippingDate', e.target.value)}
-                  />
-                ) : (
-                  pedido.shippingDate
-                )}</td>
-                <td>{editingPedido?.id === pedido.id ? (
-                  <input
-                    type="datetime-local"
-                    value={editingPedido.expectedDeliveryDate?.split('T')[0] + 'T' + (editingPedido.expectedDeliveryDate.split('T')[1] || '00:00:00')}
-                    onChange={(e) => handleInputChange('expectedDeliveryDate', e.target.value)}
-                  />
-                ) : (
-                  pedido.expectedDeliveryDate
-                )}</td>
-                <td>{editingPedido?.id === pedido.id ? (
-                  <input
-                    type="text"
-                    value={editingPedido.state}
-                    onChange={(e) => handleInputChange('state', e.target.value)}
-                  />
-                ) : (
-                  pedido.state
-                )}</td>
-                <td>{editingPedido?.id === pedido.id ? (
-                  <input
-                    type="number"
-                    value={editingPedido.nInstallments}
-                    onChange={(e) => handleInputChange('nInstallments', e.target.value)}
-                  />
-                ) : (
-                  pedido.nInstallments
-                )}</td>
-                <td>
-                  {editingPedido?.id === pedido.id ? (
-                    <select
-                      value={editingPedido.fkUserId}
-                      onChange={(e) => handleInputChange('fkUserId', e.target.value)}
-                    >
-                      <option value="">Selecione o Usuário</option>
-                      {users.map((user) => (
-                        <option key={user.id} value={user.id}>
-                          {user.username}
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
-                    users.find((user) => user.id === pedido.fkUserId)?.username
-                  )}
-                </td>
-                <td>
-                  {editingPedido?.id === pedido.id ? (
-                    <select
-                      value={editingPedido.fkClientId}
-                      onChange={(e) => handleInputChange('fkClientId', e.target.value)}
-                    >
-                      <option value="">Selecione o Cliente</option>
-                      {clients.map((client) => (
-                        <option key={client.id} value={client.id}>
-                          {client.name}
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
-                    clients.find((client) => client.id === pedido.fkClientId)?.name
-                  )}
-                </td>
-                <td>
-                  {editingPedido?.id === pedido.id ? (
-                    <div>
-                      <button onClick={() => handleSave(pedido.id)}>Salvar</button>
-                      <button onClick={() => setEditingPedido(null)}>Cancelar</button>
-                    </div>
-                  ) : (
-                    <div>
-                      <button onClick={() => handleEdit(pedido)}>Editar</button>
-                      <button onClick={() => handleDelete(pedido.id)}>Excluir</button>
-                    </div>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 };

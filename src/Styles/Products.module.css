@@ -1,0 +1,133 @@
+/* src/styles/Products.module.css */
+.container {
+     padding: 20px;
+     width: 100%;
+     height: 100%;
+     box-sizing: border-box;
+     display: flex;
+     flex-direction: column;
+     font-family: Arial, sans-serif;
+     /* Adiciona uma fonte mais moderna */
+}
+
+.header {
+     display: flex;
+     justify-content: space-between;
+     align-items: center;
+     margin-bottom: 20px;
+}
+
+.createButton {
+     padding: 12px 20px;
+     /* Aumenta o tamanho do botão */
+     border: none;
+     border-radius: 6px;
+     /* Aumenta o arredondamento */
+     background-color: #0070f3;
+     color: white;
+     cursor: pointer;
+     transition: background-color 0.3s ease, transform 0.2s ease;
+     /* Adiciona transição de transformação */
+     font-size: 16px;
+     /* Aumenta o tamanho da fonte */
+}
+
+.createButton:hover {
+     background-color: #005bb5;
+     transform: scale(1.05);
+     /* Efeito de escala ao passar o mouse */
+}
+
+.table-container {
+     margin-top: 20px;
+}
+
+.table {
+     width: 100%;
+     border-collapse: collapse;
+     margin-top: 20px;
+     background-color: #ffffff;
+     /* Fundo branco para a tabela */
+     box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+     /* Sombra sutil */
+     border-radius: 8px;
+     /* Arredondamento dos cantos */
+}
+
+.table th,
+.table td {
+     border: 1px solid #ddd;
+     padding: 12px 15px;
+     /* Aumenta o padding para mais conforto */
+     text-align: left;
+}
+
+.table th {
+     background-color: #f4f4f4;
+     font-weight: bold;
+}
+
+.table tr {
+     transition: background-color 0.3s ease;
+}
+
+.table tr:hover {
+     background-color: #f9f9f9;
+     /* Cor de fundo mais suave ao passar o mouse */
+}
+
+.form-container {
+     margin-bottom: 20px;
+     padding: 20px;
+     /* Adiciona padding ao redor do formulário */
+     border: 1px solid #ddd;
+     /* Borda ao redor do formulário */
+     border-radius: 8px;
+     /* Arredondamento dos cantos */
+     background-color: #fafafa;
+     /* Fundo leve para o formulário */
+     box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+     /* Sombra sutil */
+}
+
+.form-container input,
+.form-container button {
+     margin-bottom: 10px;
+     /* Adiciona espaçamento inferior */
+     display: block;
+     /* Faz com que os itens sejam exibidos em bloco */
+     width: calc(100% - 22px);
+     /* Ajusta a largura para o padding */
+     max-width: 500px;
+     /* Limita a largura máxima */
+}
+
+.form-container input {
+     padding: 12px;
+     /* Aumenta o padding */
+     border: 1px solid #ccc;
+     border-radius: 4px;
+     font-size: 16px;
+     /* Aumenta o tamanho da fonte */
+}
+
+.submitButton {
+     padding: 12px 20px;
+     /* Aumenta o tamanho do botão */
+     border: none;
+     border-radius: 6px;
+     /* Aumenta o arredondamento */
+     background-color: #0070f3;
+     color: white;
+     cursor: pointer;
+     transition: background-color 0.3s ease, transform 0.2s ease;
+     /* Adiciona transição de transformação */
+     font-size: 16px;
+     /* Aumenta o tamanho da fonte */
+}
+
+.submitButton:hover {
+     background-color: #005bb5;
+     transform: scale(1.05);
+     /* Efeito de escala ao passar o mouse */
+}

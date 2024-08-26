@@ -1,67 +1,92 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import styles from '../Styles/Users.module.css';
+import styles from '../Styles/Products.module.css';
 
-const Users = () => {
-  const [users, setUsers] = useState([]);
+const Produtos = () => {
+  const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [newUser, setNewUser] = useState({ Username: '', Password: '', Email: '' });
-  const [editingUserId, setEditingUserId] = useState(null); // Estado para rastrear o ID do usuário sendo editado
-  const [isAdding, setIsAdding] = useState(false); // Estado para rastrear se estamos no modo de adição
+  const [newProduct, setNewProduct] = useState({
+    name: '',
+    productType: '',
+    description: '',
+    value: '',
+    thickness: '',
+    width: '',
+    length: '',
+  });
+  const [editingProductId, setEditingProductId] = useState(null);
+  const [isAdding, setIsAdding] = useState(false);
 
   useEffect(() => {
-    const fetchUsers = async () => {
+    const fetchProducts = async () => {
       try {
-        const response = await axios.get('http://localhost:5188/User');
-        setUsers(response.data);
+        const response = await axios.get('http://localhost:5188/Product');
+        setProducts(response.data);
       } catch (err) {
-        setError('Erro ao carregar os usuários');
+        setError('Erro ao carregar os produtos');
       } finally {
         setLoading(false);
       }
     };
 
-    fetchUsers();
+    fetchProducts();
   }, []);
 
   const handleInputChange = (id, field, value) => {
-    setUsers((prevUsers) =>
-      prevUsers.map((user) =>
-        user.id === id ? { ...user, [field]: value } : user
+    setProducts((prevProducts) =>
+      prevProducts.map((product) =>
+        product.id === id ? { ...product, [field]: value } : product
       )
     );
   };
 
   const handleUpdate = async (id) => {
-    const userToUpdate = users.find((user) => user.id === id);
+    const productToUpdate = products.find((product) => product.id === id);
     try {
-      await axios.put(`http://localhost:5188/User/${id}`, userToUpdate);
-      alert('Usuário atualizado com sucesso!');
-      setEditingUserId(null); // Sair do modo de edição após salvar
+      await axios.put(`http://localhost:5188/Product/${id}`, productToUpdate);
+      alert('Produto atualizado com sucesso!');
+      setEditingProductId(null);
     } catch (err) {
-      setError('Erro ao atualizar usuário');
+      setError('Erro ao atualizar produto');
     }
   };
 
   const handleDelete = async (id) => {
     try {
-      await axios.delete(`http://localhost:5188/User/${id}`);
-      setUsers((prevUsers) => prevUsers.filter((user) => user.id !== id));
+      await axios.delete(`http://localhost:5188/Product/${id}`);
+      setProducts((prevProducts) => prevProducts.filter((product) => product.id !== id));
     } catch (err) {
-      setError('Erro ao deletar usuário');
+      setError('Erro ao deletar produto');
     }
   };
 
   const handleCreate = async () => {
     try {
-      await axios.post('http://localhost:5188/User', newUser);
-      setNewUser({ Username: '', Password: '', Email: '' });
-      const response = await axios.get('http://localhost:5188/User');
-      setUsers(response.data);
-      setIsAdding(false); // Sair do modo de adição após criar o usuário
+      const newProductData = {
+        ...newProduct,
+        productType: Number(newProduct.productType),
+        value: Number(newProduct.value),
+        thickness: Number(newProduct.thickness),
+        width: Number(newProduct.width),
+        length: Number(newProduct.length),
+      };
+
+      await axios.post('http://localhost:5188/Product', newProductData);
+      setNewProduct({
+        name: '',
+        productType: '',
+        description: '',
+        value: '',
+        thickness: '',
+        width: '',
+        length: '',
+      });
+      const response = await axios.get('http://localhost:5188/Product');
+      setProducts(response.data);
+      setIsAdding(false);
     } catch (err) {
-      setError('Erro ao criar usuário');
+      setError('Erro ao criar produto');
     }
   };
 
@@ -71,86 +96,169 @@ const Users = () => {
   return (
     <div className={styles.container}>
       <div className={styles.header}>
-        <h1>Usuários</h1>
+        <h1>Produtos</h1>
       </div>
       <div className={styles.formContainer}>
-        <h2>Criar Usuário</h2>
+        <h2>Criar Produto</h2>
         {isAdding ? (
           <>
             <input
               type="text"
-              name="Username"
-              placeholder="Username"
-              value={newUser.Username}
-              onChange={(e) => setNewUser({ ...newUser, Username: e.target.value })}
+              name="name"
+              placeholder="Nome"
+              value={newProduct.name}
+              onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })}
             />
             <input
-              type="password"
-              name="Password"
-              placeholder="Password"
-              value={newUser.Password}
-              onChange={(e) => setNewUser({ ...newUser, Password: e.target.value })}
+              type="number"
+              name="productType"
+              placeholder="Tipo de Produto"
+              value={newProduct.productType}
+              onChange={(e) => setNewProduct({ ...newProduct, productType: e.target.value })}
             />
             <input
-              type="email"
-              name="Email"
-              placeholder="Email"
-              value={newUser.Email}
-              onChange={(e) => setNewUser({ ...newUser, Email: e.target.value })}
+              type="text"
+              name="description"
+              placeholder="Descrição"
+              value={newProduct.description}
+              onChange={(e) => setNewProduct({ ...newProduct, description: e.target.value })}
+            />
+            <input
+              type="number"
+              name="value"
+              placeholder="Valor"
+              value={newProduct.value}
+              onChange={(e) => setNewProduct({ ...newProduct, value: e.target.value })}
+            />
+            <input
+              type="number"
+              name="thickness"
+              placeholder="Espessura"
+              value={newProduct.thickness}
+              onChange={(e) => setNewProduct({ ...newProduct, thickness: e.target.value })}
+            />
+            <input
+              type="number"
+              name="width"
+              placeholder="Largura"
+              value={newProduct.width}
+              onChange={(e) => setNewProduct({ ...newProduct, width: e.target.value })}
+            />
+            <input
+              type="number"
+              name="length"
+              placeholder="Comprimento"
+              value={newProduct.length}
+              onChange={(e) => setNewProduct({ ...newProduct, length: e.target.value })}
             />
             <button onClick={handleCreate}>Salvar</button>
             <button onClick={() => setIsAdding(false)}>Cancelar</button>
           </>
         ) : (
-          <button onClick={() => setIsAdding(true)}>Adicionar Novo Usuário</button>
+          <button onClick={() => setIsAdding(true)}>Adicionar Novo Produto</button>
         )}
       </div>
       <div className={styles.tableContainer}>
         <table className={styles.table}>
           <thead>
             <tr>
-              <th>Username</th>
-              <th>Email</th>
+              <th>Nome</th>
+              <th>Tipo de Produto</th>
+              <th>Descrição</th>
+              <th>Valor</th>
+              <th>Espessura</th>
+              <th>Largura</th>
+              <th>Comprimento</th>
               <th>CreatedAt</th>
               <th>UpdatedAt</th>
               <th>Ações</th>
             </tr>
           </thead>
           <tbody>
-            {users.map((user) => (
-              <tr key={user.id}>
+            {products.map((product) => (
+              <tr key={product.id}>
                 <td>
                   <input
                     type="text"
-                    value={user.username}
+                    value={product.name}
                     onChange={(e) =>
-                      handleInputChange(user.id, 'username', e.target.value)
+                      handleInputChange(product.id, 'name', e.target.value)
                     }
-                    disabled={editingUserId !== user.id} // Desativa o campo se não estiver no modo de edição
+                    disabled={editingProductId !== product.id}
                   />
                 </td>
                 <td>
                   <input
-                    type="email"
-                    value={user.email}
+                    type="number"
+                    value={product.productType}
                     onChange={(e) =>
-                      handleInputChange(user.id, 'email', e.target.value)
+                      handleInputChange(product.id, 'productType', e.target.value)
                     }
-                    disabled={editingUserId !== user.id} // Desativa o campo se não estiver no modo de edição
+                    disabled={editingProductId !== product.id}
                   />
                 </td>
-                <td>{new Date(user.createdAt).toLocaleString()}</td>
-                <td>{new Date(user.updatedAt).toLocaleString()}</td>
                 <td>
-                  {editingUserId === user.id ? (
+                  <input
+                    type="text"
+                    value={product.description}
+                    onChange={(e) =>
+                      handleInputChange(product.id, 'description', e.target.value)
+                    }
+                    disabled={editingProductId !== product.id}
+                  />
+                </td>
+                <td>
+                  <input
+                    type="number"
+                    value={product.value}
+                    onChange={(e) =>
+                      handleInputChange(product.id, 'value', e.target.value)
+                    }
+                    disabled={editingProductId !== product.id}
+                  />
+                </td>
+                <td>
+                  <input
+                    type="number"
+                    value={product.thickness}
+                    onChange={(e) =>
+                      handleInputChange(product.id, 'thickness', e.target.value)
+                    }
+                    disabled={editingProductId !== product.id}
+                  />
+                </td>
+                <td>
+                  <input
+                    type="number"
+                    value={product.width}
+                    onChange={(e) =>
+                      handleInputChange(product.id, 'width', e.target.value)
+                    }
+                    disabled={editingProductId !== product.id}
+                  />
+                </td>
+                <td>
+                  <input
+                    type="number"
+                    value={product.length}
+                    onChange={(e) =>
+                      handleInputChange(product.id, 'length', e.target.value)
+                    }
+                    disabled={editingProductId !== product.id}
+                  />
+                </td>
+                <td>{new Date(product.createdAt).toLocaleString()}</td>
+                <td>{product.updatedAt ? new Date(product.updatedAt).toLocaleString() : 'N/A'}</td>
+                <td>
+                  {editingProductId === product.id ? (
                     <>
-                      <button onClick={() => handleUpdate(user.id)}>Salvar</button>
-                      <button onClick={() => setEditingUserId(null)}>Cancelar</button>
+                      <button onClick={() => handleUpdate(product.id)}>Salvar</button>
+                      <button onClick={() => setEditingProductId(null)}>Cancelar</button>
                     </>
                   ) : (
-                    <button onClick={() => setEditingUserId(user.id)}>Editar</button>
+                    <button onClick={() => setEditingProductId(product.id)}>Editar</button>
                   )}
-                  <button onClick={() => handleDelete(user.id)}>Excluir</button>
+                  <button onClick={() => handleDelete(product.id)}>Excluir</button>
                 </td>
               </tr>
             ))}
@@ -161,4 +269,4 @@ const Users = () => {
   );
 };
 
-export default Users;
+export default Produtos;
