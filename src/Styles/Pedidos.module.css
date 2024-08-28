@@ -85,3 +85,157 @@
 .submitButton:hover {
      background-color: #005bb5;
 }
+
+/* Pedidos.module.css */
+
+.container {
+     padding: 20px;
+}
+
+.header {
+     display: flex;
+     justify-content: space-between;
+     align-items: center;
+     margin-bottom: 20px;
+}
+
+.createButton {
+     background-color: #007bff;
+     color: #fff;
+     padding: 10px 20px;
+     border: none;
+     border-radius: 5px;
+     cursor: pointer;
+     transition: background-color 0.3s;
+}
+
+.createButton:hover {
+     background-color: #0056b3;
+}
+
+.table {
+     width: 100%;
+     border-collapse: collapse;
+     margin-top: 20px;
+}
+
+.table th,
+.table td {
+     padding: 10px;
+     text-align: left;
+     border-bottom: 1px solid #ddd;
+}
+
+.modal {
+     position: relative;
+     background-color: #fff;
+     padding: 20px;
+     max-width: 600px;
+     width: 100%;
+     margin: auto;
+     border-radius: 8px;
+     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+.overlay {
+     position: fixed;
+     top: 0;
+     left: 0;
+     right: 0;
+     bottom: 0;
+     background-color: rgba(0, 0, 0, 0.75);
+     display: flex;
+     align-items: center;
+     justify-content: center;
+     z-index: 1000;
+}
+
+.modalHeader {
+     display: flex;
+     justify-content: space-between;
+     align-items: center;
+     margin-bottom: 20px;
+}
+
+.closeButton {
+     background: none;
+     border: none;
+     font-size: 1.5rem;
+     cursor: pointer;
+}
+
+.form {
+     display: grid;
+     grid-template-columns: 1fr;
+     gap: 15px;
+}
+
+.form label {
+     display: flex;
+     flex-direction: column;
+}
+
+.form input,
+.form select {
+     padding: 10px;
+     border: 1px solid #ccc;
+     border-radius: 5px;
+}
+
+.itemsContainer {
+     margin-top: 20px;
+}
+
+.item {
+     display: grid;
+     grid-template-columns: 1fr 1fr 1fr auto;
+     gap: 10px;
+     align-items: center;
+}
+
+.removeButton {
+     background-color: #dc3545;
+     color: #fff;
+     border: none;
+     border-radius: 5px;
+     cursor: pointer;
+     padding: 5px 10px;
+}
+
+.removeButton:hover {
+     background-color: #c82333;
+}
+
+.addItemButton {
+     margin-top: 10px;
+     background-color: #28a745;
+     color: #fff;
+     border: none;
+     border-radius: 5px;
+     cursor: pointer;
+     padding: 10px 20px;
+}
+
+.addItemButton:hover {
+     background-color: #218838;
+}
+
+.saveButton {
+     background-color: #007bff;
+     color: #fff;
+     border: none;
+     border-radius: 5px;
+     cursor: pointer;
+     padding: 10px 20px;
+     margin-top: 20px;
+     align-self: end;
+}
+
+.saveButton:hover {
+     background-color: #0056b3;
+}
+
+.error {
+     color: red;
+     margin-top: 20px;
+}
