@@ -1,6 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
+import Modal from 'react-modal';
 import styles from '../Styles/Products.module.css';
+
+// Configuração do Modal para trabalhar com a aplicação
+Modal.setAppElement('#root');
 
 const Produtos = () => {
   const [products, setProducts] = useState([]);
@@ -15,8 +19,9 @@ const Produtos = () => {
     width: '',
     length: '',
   });
-  const [editingProductId, setEditingProductId] = useState(null);
+  const [editingProduct, setEditingProduct] = useState(null);
   const [isAdding, setIsAdding] = useState(false);
+  const [confirmDeleteProduct, setConfirmDeleteProduct] = useState(null);
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -33,32 +38,11 @@ const Produtos = () => {
     fetchProducts();
   }, []);
 
-  const handleInputChange = (id, field, value) => {
-    setProducts((prevProducts) =>
-      prevProducts.map((product) =>
-        product.id === id ? { ...product, [field]: value } : product
-      )
-    );
-  };
-
-  const handleUpdate = async (id) => {
-    const productToUpdate = products.find((product) => product.id === id);
-    try {
-      await axios.put(`http://localhost:5188/Product/${id}`, productToUpdate);
-      alert('Produto atualizado com sucesso!');
-      setEditingProductId(null);
-    } catch (err) {
-      setError('Erro ao atualizar produto');
-    }
-  };
-
-  const handleDelete = async (id) => {
-    try {
-      await axios.delete(`http://localhost:5188/Product/${id}`);
-      setProducts((prevProducts) => prevProducts.filter((product) => product.id !== id));
-    } catch (err) {
-      setError('Erro ao deletar produto');
-    }
+  const handleInputChange = (field, value) => {
+    setNewProduct((prevProduct) => ({
+      ...prevProduct,
+      [field]: value,
+    }));
   };
 
   const handleCreate = async () => {
@@ -90,6 +74,46 @@ const Produtos = () => {
     }
   };
 
+  const handleUpdate = async () => {
+    try {
+      await axios.put(`http://localhost:5188/Product/${editingProduct.id}`, editingProduct);
+      alert('Produto atualizado com sucesso!');
+      setEditingProduct(null);
+      const response = await axios.get('http://localhost:5188/Product');
+      setProducts(response.data);
+    } catch (err) {
+      setError('Erro ao atualizar produto');
+    }
+  };
+
+  const handleDelete = async () => {
+    try {
+      await axios.delete(`http://localhost:5188/Product/${confirmDeleteProduct}`);
+      setProducts((prevProducts) => prevProducts.filter((product) => product.id !== confirmDeleteProduct));
+      setConfirmDeleteProduct(null);
+    } catch (err) {
+      setError('Erro ao deletar produto');
+    }
+  };
+
+  const openEditModal = (product) => {
+    setEditingProduct(product);
+    setIsAdding(true);
+  };
+
+  const closeModal = () => {
+    setIsAdding(false);
+    setEditingProduct(null);
+  };
+
+  const openDeleteConfirmModal = (productId) => {
+    setConfirmDeleteProduct(productId);
+  };
+
+  const closeDeleteConfirmModal = () => {
+    setConfirmDeleteProduct(null);
+  };
+
   if (loading) return <p>Carregando...</p>;
   if (error) return <p>{error}</p>;
 
@@ -99,64 +123,74 @@ const Produtos = () => {
         <h1>Produtos</h1>
       </div>
       <div className={styles.formContainer}>
-        <h2>Criar Produto</h2>
-        {isAdding ? (
-          <>
-            <input
-              type="text"
-              name="name"
-              placeholder="Nome"
-              value={newProduct.name}
-              onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })}
-            />
-            <input
-              type="number"
-              name="productType"
-              placeholder="Tipo de Produto"
-              value={newProduct.productType}
-              onChange={(e) => setNewProduct({ ...newProduct, productType: e.target.value })}
-            />
-            <input
-              type="text"
-              name="description"
-              placeholder="Descrição"
-              value={newProduct.description}
-              onChange={(e) => setNewProduct({ ...newProduct, description: e.target.value })}
-            />
-            <input
-              type="number"
-              name="value"
-              placeholder="Valor"
-              value={newProduct.value}
-              onChange={(e) => setNewProduct({ ...newProduct, value: e.target.value })}
-            />
-            <input
-              type="number"
-              name="thickness"
-              placeholder="Espessura"
-              value={newProduct.thickness}
-              onChange={(e) => setNewProduct({ ...newProduct, thickness: e.target.value })}
-            />
-            <input
-              type="number"
-              name="width"
-              placeholder="Largura"
-              value={newProduct.width}
-              onChange={(e) => setNewProduct({ ...newProduct, width: e.target.value })}
-            />
-            <input
-              type="number"
-              name="length"
-              placeholder="Comprimento"
-              value={newProduct.length}
-              onChange={(e) => setNewProduct({ ...newProduct, length: e.target.value })}
-            />
-            <button onClick={handleCreate}>Salvar</button>
-            <button onClick={() => setIsAdding(false)}>Cancelar</button>
-          </>
-        ) : (
-          <button onClick={() => setIsAdding(true)}>Adicionar Novo Produto</button>
-        )}
+        <button onClick={() => setIsAdding(true)} className={styles.createButton}>Adicionar Novo Produto</button>
+        <Modal
+          isOpen={isAdding}
+          onRequestClose={closeModal}
+          contentLabel={editingProduct ? 'Editar Produto' : 'Criar Produto'}
+          className={styles.modal}
+          overlayClassName={styles.overlay}
+        >
+          <h2>{editingProduct ? 'Editar Produto' : 'Criar Produto'}</h2>
+          <input
+            type="text"
+            placeholder="Nome"
+            value={editingProduct ? editingProduct.name : newProduct.name}
+            onChange={(e) => handleInputChange('name', e.target.value)}
+          />
+          <input
+            type="number"
+            placeholder="Tipo de Produto"
+            value={editingProduct ? editingProduct.productType : newProduct.productType}
+            onChange={(e) => handleInputChange('productType', e.target.value)}
+          />
+          <input
+            type="text"
+            placeholder="Descrição"
+            value={editingProduct ? editingProduct.description : newProduct.description}
+            onChange={(e) => handleInputChange('description', e.target.value)}
+          />
+          <input
+            type="number"
+            placeholder="Valor"
+            value={editingProduct ? editingProduct.value : newProduct.value}
+            onChange={(e) => handleInputChange('value', e.target.value)}
+          />
+          <input
+            type="number"
+            placeholder="Espessura"
+            value={editingProduct ? editingProduct.thickness : newProduct.thickness}
+            onChange={(e) => handleInputChange('thickness', e.target.value)}
+          />
+          <input
+            type="number"
+            placeholder="Largura"
+            value={editingProduct ? editingProduct.width : newProduct.width}
+            onChange={(e) => handleInputChange('width', e.target.value)}
+          />
+          <input
+            type="number"
+            placeholder="Comprimento"
+            value={editingProduct ? editingProduct.length : newProduct.length}
+            onChange={(e) => handleInputChange('length', e.target.value)}
+          />
+          <button className={styles.submitButton} onClick={editingProduct ? handleUpdate : handleCreate}>
+            {editingProduct ? 'Salvar' : 'Criar'}
+          </button>
+          <button className={styles.submitButton} onClick={closeModal}>Cancelar</button>
+        </Modal>
+        <Modal
+          isOpen={!!confirmDeleteProduct}
+          onRequestClose={closeDeleteConfirmModal}
+          contentLabel="Confirmar Exclusão"
+          className={styles.modal}
+          overlayClassName={styles.overlay}
+        >
+          <h2>Confirmar Exclusão</h2>
+          <p>Você tem certeza que deseja excluir este produto?</p>
+          <button className={styles.submitButton} onClick={handleDelete}>Confirmar</button>
+          <button className={styles.submitButton} onClick={closeDeleteConfirmModal}>Cancelar</button>
+        </Modal>
       </div>
       <div className={styles.tableContainer}>
         <table className={styles.table}>
@@ -177,88 +211,18 @@ const Produtos = () => {
           <tbody>
             {products.map((product) => (
               <tr key={product.id}>
-                <td>
-                  <input
-                    type="text"
-                    value={product.name}
-                    onChange={(e) =>
-                      handleInputChange(product.id, 'name', e.target.value)
-                    }
-                    disabled={editingProductId !== product.id}
-                  />
-                </td>
-                <td>
-                  <input
-                    type="number"
-                    value={product.productType}
-                    onChange={(e) =>
-                      handleInputChange(product.id, 'productType', e.target.value)
-                    }
-                    disabled={editingProductId !== product.id}
-                  />
-                </td>
-                <td>
-                  <input
-                    type="text"
-                    value={product.description}
-                    onChange={(e) =>
-                      handleInputChange(product.id, 'description', e.target.value)
-                    }
-                    disabled={editingProductId !== product.id}
-                  />
-                </td>
-                <td>
-                  <input
-                    type="number"
-                    value={product.value}
-                    onChange={(e) =>
-                      handleInputChange(product.id, 'value', e.target.value)
-                    }
-                    disabled={editingProductId !== product.id}
-                  />
-                </td>
-                <td>
-                  <input
-                    type="number"
-                    value={product.thickness}
-                    onChange={(e) =>
-                      handleInputChange(product.id, 'thickness', e.target.value)
-                    }
-                    disabled={editingProductId !== product.id}
-                  />
-                </td>
-                <td>
-                  <input
-                    type="number"
-                    value={product.width}
-                    onChange={(e) =>
-                      handleInputChange(product.id, 'width', e.target.value)
-                    }
-                    disabled={editingProductId !== product.id}
-                  />
-                </td>
-                <td>
-                  <input
-                    type="number"
-                    value={product.length}
-                    onChange={(e) =>
-                      handleInputChange(product.id, 'length', e.target.value)
-                    }
-                    disabled={editingProductId !== product.id}
-                  />
-                </td>
+                <td>{product.name}</td>
+                <td>{product.productType}</td>
+                <td>{product.description}</td>
+                <td>{product.value}</td>
+                <td>{product.thickness}</td>
+                <td>{product.width}</td>
+                <td>{product.length}</td>
                 <td>{new Date(product.createdAt).toLocaleString()}</td>
                 <td>{product.updatedAt ? new Date(product.updatedAt).toLocaleString() : 'N/A'}</td>
                 <td>
-                  {editingProductId === product.id ? (
-                    <>
-                      <button onClick={() => handleUpdate(product.id)}>Salvar</button>
-                      <button onClick={() => setEditingProductId(null)}>Cancelar</button>
-                    </>
-                  ) : (
-                    <button onClick={() => setEditingProductId(product.id)}>Editar</button>
-                  )}
-                  <button onClick={() => handleDelete(product.id)}>Excluir</button>
+                  <button onClick={() => openEditModal(product)}>Editar</button>
+                  <button onClick={() => openDeleteConfirmModal(product.id)}>Excluir</button>
                 </td>
               </tr>
             ))}

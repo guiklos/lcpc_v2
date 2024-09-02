@@ -1,25 +1,20 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
+import Modal from 'react-modal';
 import styles from '../Styles/Clientes.module.css';
+
+Modal.setAppElement('#root'); // Ajuste para o id do elemento root no seu HTML
 
 const Clientes = () => {
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [newClient, setNewClient] = useState({
-    name: '',
-    streetplace: '',
-    neighborhood: '',
-    number: '',
-    complement: '',
-    phone: '',
-    email: '',
-    cnpj: '',
-    fkCityId: ''
-  });
-  const [editingClientId, setEditingClientId] = useState(null);
-  const [isAdding, setIsAdding] = useState(false);
-  const [cities, setCities] = useState([]); // Estado para armazenar cidades
+  const [currentClient, setCurrentClient] = useState(null);
+  const [modalIsOpen, setModalIsOpen] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [confirmDeleteIsOpen, setConfirmDeleteIsOpen] = useState(false);
+  const [clientToDelete, setClientToDelete] = useState(null);
+  const [cities, setCities] = useState([]);
 
   useEffect(() => {
     const fetchClients = async () => {
@@ -46,41 +41,68 @@ const Clientes = () => {
     fetchCities();
   }, []);
 
+  const openModal = (client = null) => {
+    setCurrentClient(client || {
+      name: '',
+      streetplace: '',
+      neighborhood: '',
+      number: '',
+      complement: '',
+      phone: '',
+      email: '',
+      cnpj: '',
+      fkCityId: ''
+    });
+    setIsEditing(!!client);
+    setModalIsOpen(true);
+  };
+
+  const closeModal = () => {
+    setModalIsOpen(false);
+    setCurrentClient(null);
+  };
+
+  const openConfirmDeleteModal = (client) => {
+    setClientToDelete(client);
+    setConfirmDeleteIsOpen(true);
+  };
+
+  const closeConfirmDeleteModal = () => {
+    setConfirmDeleteIsOpen(false);
+    setClientToDelete(null);
+  };
+
   const handleInputChange = (field, value) => {
-    setNewClient((prevClient) => ({
+    setCurrentClient((prevClient) => ({
       ...prevClient,
       [field]: value
     }));
   };
 
-  const handleCreate = async () => {
+  const handleSave = async () => {
     try {
-      await axios.post('http://localhost:5188/Client', newClient);
-      setNewClient({
-        name: '',
-        streetplace: '',
-        neighborhood: '',
-        number: '',
-        complement: '',
-        phone: '',
-        email: '',
-        cnpj: '',
-        fkCityId: ''
-      });
+      if (isEditing) {
+        await axios.put(`http://localhost:5188/Client/${currentClient.id}`, currentClient);
+      } else {
+        await axios.post('http://localhost:5188/Client', currentClient);
+      }
       const response = await axios.get('http://localhost:5188/Client');
       setClients(response.data);
-      setIsAdding(false);
+      closeModal();
     } catch (err) {
-      setError('Erro ao criar cliente');
+      setError('Erro ao salvar cliente');
     }
   };
 
-  const handleDelete = async (id) => {
-    try {
-      await axios.delete(`http://localhost:5188/Client/${id}`);
-      setClients((prevClients) => prevClients.filter((client) => client.id !== id));
-    } catch (err) {
-      setError('Erro ao excluir cliente');
+  const handleDelete = async () => {
+    if (clientToDelete) {
+      try {
+        await axios.delete(`http://localhost:5188/Client/${clientToDelete.id}`);
+        setClients((prevClients) => prevClients.filter((client) => client.id !== clientToDelete.id));
+        closeConfirmDeleteModal();
+      } catch (err) {
+        setError('Erro ao excluir cliente');
+      }
     }
   };
 
@@ -92,76 +114,8 @@ const Clientes = () => {
       <div className={styles.header}>
         <h1>Clientes</h1>
       </div>
-      <div className={styles.formContainer}>
-        <h2>Criar Cliente</h2>
-        {isAdding ? (
-          <>
-            <input
-              type="text"
-              placeholder="Nome"
-              value={newClient.name}
-              onChange={(e) => handleInputChange('name', e.target.value)}
-            />
-            <input
-              type="text"
-              placeholder="Rua"
-              value={newClient.streetplace}
-              onChange={(e) => handleInputChange('streetplace', e.target.value)}
-            />
-            <input
-              type="text"
-              placeholder="Bairro"
-              value={newClient.neighborhood}
-              onChange={(e) => handleInputChange('neighborhood', e.target.value)}
-            />
-            <input
-              type="text"
-              placeholder="Número"
-              value={newClient.number}
-              onChange={(e) => handleInputChange('number', e.target.value)}
-            />
-            <input
-              type="text"
-              placeholder="Complemento"
-              value={newClient.complement}
-              onChange={(e) => handleInputChange('complement', e.target.value)}
-            />
-            <input
-              type="text"
-              placeholder="Telefone"
-              value={newClient.phone}
-              onChange={(e) => handleInputChange('phone', e.target.value)}
-            />
-            <input
-              type="email"
-              placeholder="Email"
-              value={newClient.email}
-              onChange={(e) => handleInputChange('email', e.target.value)}
-            />
-            <input
-              type="text"
-              placeholder="CNPJ"
-              value={newClient.cnpj}
-              onChange={(e) => handleInputChange('cnpj', e.target.value)}
-            />
-            <select
-              value={newClient.fkCityId}
-              onChange={(e) => handleInputChange('fkCityId', e.target.value)}
-            >
-              <option value="">Selecione a cidade</option>
-              {cities.map((city) => (
-                <option key={city.id} value={city.id}>
-                  {city.name}
-                </option>
-              ))}
-            </select>
-            <button className={styles.submitButton} onClick={handleCreate}>Salvar</button>
-            <button className={styles.submitButton} onClick={() => setIsAdding(false)}>Cancelar</button>
-          </>
-        ) : (
-          <button className={styles.createButton} onClick={() => setIsAdding(true)}>Adicionar Novo Cliente</button>
-        )}
-      </div>
+      <button className={styles.createButton} onClick={() => openModal()}>Adicionar Novo Cliente</button>
+
       <div className={styles.tableContainer}>
         <table className={styles.table}>
           <thead>
@@ -175,33 +129,119 @@ const Clientes = () => {
               <th>Email</th>
               <th>CNPJ</th>
               <th>Cidade</th>
-              <th>CreatedAt</th>
-              <th>UpdatedAt</th>
               <th>Ações</th>
             </tr>
           </thead>
           <tbody>
-            {clients.map((client) => (
-              <tr key={client.id}>
-                <td>{client.name}</td>
-                <td>{client.streetplace}</td>
-                <td>{client.neighborhood}</td>
-                <td>{client.number}</td>
-                <td>{client.complement}</td>
-                <td>{client.phone}</td>
-                <td>{client.email}</td>
-                <td>{client.cnpj}</td>
-                <td>{client.city}</td>
-                <td>{new Date(client.createdAt).toLocaleString()}</td>
-                <td>{client.updatedAt ? new Date(client.updatedAt).toLocaleString() : 'N/A'}</td>
-                <td>
-                  <button onClick={() => handleDelete(client.id)}>Excluir</button>
-                </td>
-              </tr>
-            ))}
+            {clients.map((client) => {
+              // Encontrar o nome da cidade usando fkCityId
+              const cityName = cities.find(city => city.id === client.fkCityId)?.name || 'Não especificado';
+
+              return (
+                <tr key={client.id}>
+                  <td>{client.name}</td>
+                  <td>{client.streetplace}</td>
+                  <td>{client.neighborhood}</td>
+                  <td>{client.number}</td>
+                  <td>{client.complement}</td>
+                  <td>{client.phone}</td>
+                  <td>{client.email}</td>
+                  <td>{client.cnpj}</td>
+                  <td>{cityName}</td>
+                  <td>
+                    <button onClick={() => openModal(client)}>Editar</button>
+                    <button onClick={() => openConfirmDeleteModal(client)}>Excluir</button>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
+
+      <Modal
+  isOpen={modalIsOpen}
+  onRequestClose={closeModal}
+  contentLabel={isEditing ? 'Editar Cliente' : 'Criar Cliente'}
+  className={styles.modal}
+  overlayClassName={styles.overlay}
+>
+  <h2>{isEditing ? 'Editar Cliente' : 'Criar Cliente'}</h2>
+  <input
+    type="text"
+    placeholder="Nome"
+    value={currentClient?.name || ''}
+    onChange={(e) => handleInputChange('name', e.target.value)}
+  />
+  <input
+    type="text"
+    placeholder="Rua"
+    value={currentClient?.streetplace || ''}
+    onChange={(e) => handleInputChange('streetplace', e.target.value)}
+  />
+  <input
+    type="text"
+    placeholder="Bairro"
+    value={currentClient?.neighborhood || ''}
+    onChange={(e) => handleInputChange('neighborhood', e.target.value)}
+  />
+  <input
+    type="text"
+    placeholder="Número"
+    value={currentClient?.number || ''}
+    onChange={(e) => handleInputChange('number', e.target.value)}
+  />
+  <input
+    type="text"
+    placeholder="Complemento"
+    value={currentClient?.complement || ''}
+    onChange={(e) => handleInputChange('complement', e.target.value)}
+  />
+  <input
+    type="text"
+    placeholder="Telefone"
+    value={currentClient?.phone || ''}
+    onChange={(e) => handleInputChange('phone', e.target.value)}
+  />
+  <input
+    type="email"
+    placeholder="Email"
+    value={currentClient?.email || ''}
+    onChange={(e) => handleInputChange('email', e.target.value)}
+  />
+  <input
+    type="text"
+    placeholder="CNPJ"
+    value={currentClient?.cnpj || ''}
+    onChange={(e) => handleInputChange('cnpj', e.target.value)}
+  />
+  <select
+    value={currentClient?.fkCityId || ''}
+    onChange={(e) => handleInputChange('fkCityId', e.target.value)}
+  >
+    <option value="">Selecione a cidade</option>
+    {cities.map((city) => (
+      <option key={city.id} value={city.id}>
+        {city.name}
+      </option>
+    ))}
+  </select>
+  <button className={styles.submitButton} onClick={handleSave}>Salvar</button>
+  <button className={styles.submitButton} onClick={closeModal}>Cancelar</button>
+</Modal>
+
+<Modal
+  isOpen={confirmDeleteIsOpen}
+  onRequestClose={closeConfirmDeleteModal}
+  contentLabel="Confirmar Exclusão"
+  className={styles.modal}
+  overlayClassName={styles.overlay}
+>
+  <h2>Confirmar Exclusão</h2>
+  <p>Você tem certeza que deseja excluir este cliente?</p>
+  <button className={styles.submitButton} onClick={handleDelete}>Confirmar</button>
+  <button className={styles.submitButton} onClick={closeConfirmDeleteModal}>Cancelar</button>
+</Modal>
     </div>
   );
 };

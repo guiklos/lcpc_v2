@@ -11,6 +11,7 @@ const Pedidos = () => {
   const [newPedido, setNewPedido] = useState({
     description: '',
     totalValue: 0,
+    discount: 0,
     shippingDate: '',
     expectedDeliveryDate: '',
     state: '',
@@ -24,6 +25,7 @@ const Pedidos = () => {
   const [itemsOrdem, setItemsOrdem] = useState([]);
   const [products, setProducts] = useState([]);
   const [confirmDelete, setConfirmDelete] = useState(null);
+  const [successMessage, setSuccessMessage] = useState('');
 
   useEffect(() => {
     const fetchData = async () => {
@@ -52,33 +54,73 @@ const Pedidos = () => {
 
   const formatDate = (date) => date ? new Date(date).toISOString() : '';
 
-  const calculateTotalValue = (items) => items.reduce((total, item) => total + (item.quantity * item.itemValue), 0);
+  const calculateTotalValue = (items, discount) => {
+    const total = items.reduce((total, item) => total + (item.quantity * item.itemValue), 0);
+    return total - (total * (discount / 100)); // Aplica o desconto percentual
+  };
 
   const handleInputChange = (field, value) => {
-    setEditingPedido(prev => ({ ...prev, [field]: value }));
-  };
-
-  const handleNewInputChange = (field, value) => {
-    setNewPedido(prev => ({ ...prev, [field]: value }));
-  };
-
-  const handleItemChange = (index, field, value) => {
-    const updatedItems = [...newPedido.items];
-    updatedItems[index] = { ...updatedItems[index], [field]: value };
-    const newTotalValue = calculateTotalValue(updatedItems);
-    setNewPedido(prev => ({ ...prev, items: updatedItems, totalValue: newTotalValue }));
-  };
-
-  const addItem = () => {
-    setNewPedido(prev => {
-      const newItems = [...prev.items, { fkProductId: '', quantity: 1, itemValue: 0 }];
-      return { ...prev, items: newItems, totalValue: calculateTotalValue(newItems) };
+    setEditingPedido(prev => {
+      const updatedPedido = { ...prev, [field]: value };
+      return {
+        ...updatedPedido,
+        totalValue: calculateTotalValue(updatedPedido.items, updatedPedido.discount) // Atualiza o totalValue
+      };
     });
   };
 
+  const handleNewInputChange = (field, value) => {
+    setNewPedido(prev => {
+      const updatedPedido = { ...prev, [field]: value };
+      return {
+        ...updatedPedido,
+        totalValue: calculateTotalValue(updatedPedido.items, updatedPedido.discount) // Atualiza o totalValue
+      };
+    });
+  };
+
+  const handleItemChange = (index, field, value) => {
+    const updatedItems = editingPedido ? [...editingPedido.items] : [...newPedido.items];
+    
+    updatedItems[index] = { ...updatedItems[index], [field]: value };
+    
+    if (field === 'fkProductId') {
+      const selectedProduct = products.find(product => product.id === value);
+      if (selectedProduct) {
+        updatedItems[index].itemValue = selectedProduct.value;
+      }
+    }
+    
+    const newTotalValue = calculateTotalValue(updatedItems, editingPedido ? editingPedido.discount : newPedido.discount);
+    if (editingPedido) {
+      setEditingPedido(prev => ({ ...prev, items: updatedItems, totalValue: newTotalValue }));
+    } else {
+      setNewPedido(prev => ({ ...prev, items: updatedItems, totalValue: newTotalValue }));
+    }
+  };
+
+  const addItem = () => {
+    if (editingPedido) {
+      setEditingPedido(prev => {
+        const newItems = [...prev.items, { fkProductId: '', quantity: 1, itemValue: 0 }];
+        return { ...prev, items: newItems, totalValue: calculateTotalValue(newItems, prev.discount) };
+      });
+    } else {
+      setNewPedido(prev => {
+        const newItems = [...prev.items, { fkProductId: '', quantity: 1, itemValue: 0 }];
+        return { ...prev, items: newItems, totalValue: calculateTotalValue(newItems, prev.discount) };
+      });
+    }
+  };
+
   const removeItem = (index) => {
-    const updatedItems = newPedido.items.filter((_, i) => i !== index);
-    setNewPedido(prev => ({ ...prev, items: updatedItems, totalValue: calculateTotalValue(updatedItems) }));
+    if (editingPedido) {
+      const updatedItems = editingPedido.items.filter((_, i) => i !== index);
+      setEditingPedido(prev => ({ ...prev, items: updatedItems, totalValue: calculateTotalValue(updatedItems, prev.discount) }));
+    } else {
+      const updatedItems = newPedido.items.filter((_, i) => i !== index);
+      setNewPedido(prev => ({ ...prev, items: updatedItems, totalValue: calculateTotalValue(updatedItems, prev.discount) }));
+    }
   };
 
   const handleSave = async (pedidoId) => {
@@ -93,6 +135,8 @@ const Pedidos = () => {
       const response = await axios.get('http://localhost:5188/Order');
       setPedidos(response.data);
       setEditingPedido(null);
+      setShowForm(false);
+      setSuccessMessage('Pedido salvo com sucesso!');
     } catch (err) {
       setError('Erro ao salvar pedido');
     }
@@ -109,8 +153,9 @@ const Pedidos = () => {
   };
 
   const handleEdit = (pedido) => {
-    setEditingPedido(pedido);
-    setShowForm(true); // Exibir o formulário no modal ao editar
+    const itemsForEditingPedido = filterItemsOrdemByPedido(pedido.id);
+    setEditingPedido({ ...pedido, items: itemsForEditingPedido });
+    setShowForm(true);
   };
 
   const handleCreate = async () => {
@@ -131,7 +176,6 @@ const Pedidos = () => {
         });
       }
 
-      // Recarregar pedidos e itens
       const pedidosResponse = await axios.get('http://localhost:5188/Order');
       const itemsResponse = await axios.get('http://localhost:5188/ItemOrder');
       setPedidos(pedidosResponse.data);
@@ -139,6 +183,7 @@ const Pedidos = () => {
       setNewPedido({
         description: '',
         totalValue: 0,
+        discount: 0,
         shippingDate: '',
         expectedDeliveryDate: '',
         state: '',
@@ -148,6 +193,7 @@ const Pedidos = () => {
         items: []
       });
       setShowForm(false);
+      setSuccessMessage('Pedido criado com sucesso!');
     } catch (err) {
       setError('Erro ao criar pedido');
     }
@@ -182,6 +228,8 @@ const Pedidos = () => {
         <button className={styles.createButton} onClick={() => setShowForm(true)}>Criar Pedido</button>
       </div>
 
+      {successMessage && <p className={styles.successMessage}>{successMessage}</p>}
+
       {showForm && (
         <div className={styles.overlay}>
           <div className={styles.modal}>
@@ -201,27 +249,18 @@ const Pedidos = () => {
                 />
               </label>
               <label>
-                Valor Total
-                <input
-                  type="number"
-                  placeholder="Valor Total"
-                  value={editingPedido ? editingPedido.totalValue : newPedido.totalValue}
-                  readOnly
-                />
-              </label>
-              <label>
                 Data de Envio
                 <input
-                  type="datetime-local"
-                  value={editingPedido ? editingPedido.shippingDate?.split('T')[0] + 'T' + (editingPedido.shippingDate.split('T')[1] || '00:00:00') : newPedido.shippingDate?.split('T')[0] + 'T' + (newPedido.shippingDate.split('T')[1] || '00:00:00')}
+                  type="date"
+                  value={editingPedido ? formatDate(editingPedido.shippingDate) : newPedido.shippingDate}
                   onChange={(e) => (editingPedido ? handleInputChange('shippingDate', e.target.value) : handleNewInputChange('shippingDate', e.target.value))}
                 />
               </label>
               <label>
-                Data de Entrega Esperada
+                Data de Entrega Prevista
                 <input
-                  type="datetime-local"
-                  value={editingPedido ? editingPedido.expectedDeliveryDate?.split('T')[0] + 'T' + (editingPedido.expectedDeliveryDate.split('T')[1] || '00:00:00') : newPedido.expectedDeliveryDate?.split('T')[0] + 'T' + (newPedido.expectedDeliveryDate.split('T')[1] || '00:00:00')}
+                  type="date"
+                  value={editingPedido ? formatDate(editingPedido.expectedDeliveryDate) : newPedido.expectedDeliveryDate}
                   onChange={(e) => (editingPedido ? handleInputChange('expectedDeliveryDate', e.target.value) : handleNewInputChange('expectedDeliveryDate', e.target.value))}
                 />
               </label>
@@ -235,10 +274,10 @@ const Pedidos = () => {
                 />
               </label>
               <label>
-                Parcelas
+                Nº de Parcelas
                 <input
                   type="number"
-                  placeholder="Parcelas"
+                  placeholder="Número de Parcelas"
                   value={editingPedido ? editingPedido.nInstallments : newPedido.nInstallments}
                   onChange={(e) => (editingPedido ? handleInputChange('nInstallments', e.target.value) : handleNewInputChange('nInstallments', e.target.value))}
                 />
@@ -249,11 +288,9 @@ const Pedidos = () => {
                   value={editingPedido ? editingPedido.fkUserId : newPedido.fkUserId}
                   onChange={(e) => (editingPedido ? handleInputChange('fkUserId', e.target.value) : handleNewInputChange('fkUserId', e.target.value))}
                 >
-                  <option value="">Selecione um usuário</option>
+                  <option value="">Selecione um Usuário</option>
                   {users.map(user => (
-                    <option key={user.id} value={user.id}>
-                      {user.username}
-                    </option>
+                    <option key={user.id} value={user.id}>{user.username}</option>
                   ))}
                 </select>
               </label>
@@ -263,61 +300,78 @@ const Pedidos = () => {
                   value={editingPedido ? editingPedido.fkClientId : newPedido.fkClientId}
                   onChange={(e) => (editingPedido ? handleInputChange('fkClientId', e.target.value) : handleNewInputChange('fkClientId', e.target.value))}
                 >
-                  <option value="">Selecione um cliente</option>
+                  <option value="">Selecione um Cliente</option>
                   {clients.map(client => (
-                    <option key={client.id} value={client.id}>
-                      {client.name}
-                    </option>
+                    <option key={client.id} value={client.id}>{client.name}</option>
                   ))}
                 </select>
               </label>
 
-              <div className={styles.items}>
-                <h3>Itens</h3>
-                {newPedido.items.map((item, index) => (
+              <label>
+                Desconto (%)
+                <input
+                  type="number"
+                  min="0"
+                  placeholder="Desconto (%)"
+                  value={editingPedido ? editingPedido.discount : newPedido.discount}
+                  onChange={(e) => (editingPedido ? handleInputChange('discount', e.target.value) : handleNewInputChange('discount', e.target.value))}
+                />
+              </label>
+
+              <h3>Itens do Pedido</h3>
+              {editingPedido ? (
+                editingPedido.items.map((item, index) => (
                   <div key={index} className={styles.itemRow}>
                     <select
                       value={item.fkProductId}
                       onChange={(e) => handleItemChange(index, 'fkProductId', e.target.value)}
                     >
-                      <option value="">Selecione o Produto</option>
-                      {products.map((product) => (
-                        <option key={product.id} value={product.id}>
-                          {product.name} - {product.value}
-                        </option>
+                      <option value="">Selecione um Produto</option>
+                      {products.map(product => (
+                        <option key={product.id} value={product.id}>{getProductDetails(product.id)}</option>
                       ))}
                     </select>
                     <input
                       type="number"
-                      placeholder="Quantidade"
+                      min="1"
                       value={item.quantity}
-                      onChange={(e) => handleItemChange(index, 'quantity', e.target.value)}
+                      onChange={(e) => handleItemChange(index, 'quantity', parseInt(e.target.value))}
                     />
+                    <span>{item.itemValue}</span>
+                    <button className={styles.removeItemButton} onClick={() => removeItem(index)}>Remover</button>
+                  </div>
+                ))
+              ) : (
+                newPedido.items.map((item, index) => (
+                  <div key={index} className={styles.itemRow}>
+                    <select
+                      value={item.fkProductId}
+                      onChange={(e) => handleItemChange(index, 'fkProductId', e.target.value)}
+                    >
+                      <option value="">Selecione um Produto</option>
+                      {products.map(product => (
+                        <option key={product.id} value={product.id}>{getProductDetails(product.id)}</option>
+                      ))}
+                    </select>
+                    <span>Quantidade:</span>
                     <input
                       type="number"
-                      placeholder="Valor do Item"
-                      value={item.itemValue}
-                      onChange={(e) => handleItemChange(index, 'itemValue', e.target.value)}
+                      min="1"
+                      value={item.quantity}
+                      onChange={(e) => handleItemChange(index, 'quantity', parseInt(e.target.value))}
                     />
-                    <button className={styles.removeButton} onClick={() => removeItem(index)}>Remover Item</button>
+                    <span>  Valor: {item.itemValue}    </span>
+                    <button className={styles.removeItemButton} onClick={() => removeItem(index)}>Remover</button>
                   </div>
-                ))}
-                <button className={styles.addItemButton} onClick={addItem}>Adicionar Item</button>
-              </div>
+                ))
+              )}
+              <button className={styles.addItemButton} onClick={addItem}>Adicionar Item</button>
 
-              <div className={styles.modalFooter}>
-                <button
-                  onClick={() => {
-                    if (editingPedido) {
-                      handleSave(editingPedido.id);
-                    } else {
-                      handleCreate();
-                    }
-                  }}
-                >
-                  {editingPedido ? 'Salvar' : 'Criar'}
-                </button>
-              </div>
+              <h3>Total: {editingPedido ? calculateTotalValue(editingPedido.items, editingPedido.discount) : calculateTotalValue(newPedido.items, newPedido.discount)}</h3>
+
+              <button className={styles.saveButton} onClick={editingPedido ? () => handleSave(editingPedido.id) : handleCreate}>
+                {editingPedido ? 'Salvar' : 'Criar'}
+              </button>
             </div>
           </div>
         </div>
@@ -325,30 +379,30 @@ const Pedidos = () => {
 
       <table className={styles.table}>
         <thead>
-          <tr>            
-            <th>Cliente</th>
+          <tr>
             <th>Descrição</th>
-            <th>Valor Total</th>
             <th>Data de Envio</th>
-            <th>Data de Entrega Esperada</th>
+            <th>Data de Entrega Prevista</th>
             <th>Estado</th>
             <th>Parcelas</th>
-            <th>Itens do pedido</th>
             <th>Usuário</th>
-
+            <th>Cliente</th>
+            <th>Total</th>
+            <th>Itens do pedido</th>
             <th>Ações</th>
           </tr>
         </thead>
         <tbody>
-          {pedidos.map((pedido) => (
+          {pedidos.map(pedido => (
             <tr key={pedido.id}>
-              <td>{getClientNameById(pedido.fkClientId)}</td>
               <td>{pedido.description}</td>
-              <td>{pedido.totalValue}</td>
-              <td>{new Date(pedido.shippingDate).toLocaleString()}</td>
-              <td>{new Date(pedido.expectedDeliveryDate).toLocaleString()}</td>
+              <td>{pedido.shippingDate}</td>
+              <td>{pedido.expectedDeliveryDate}</td>
               <td>{pedido.state}</td>
               <td>{pedido.nInstallments}</td>
+              <td>{getUserNameById(pedido.fkUserId)}</td>
+              <td>{getClientNameById(pedido.fkClientId)}</td>
+              <td>{pedido.totalValue}</td>
               <td>
                 {filterItemsOrdemByPedido(pedido.id).map((item) => (
                   <div key={item.id}>
@@ -356,8 +410,6 @@ const Pedidos = () => {
                   </div>
                 ))}
               </td>
-              <td>{getUserNameById(pedido.fkUserId)}</td>
-
               <td>
                 <button className={styles.editButton} onClick={() => handleEdit(pedido)}>Editar</button>
                 <button className={styles.deleteButton} onClick={() => setConfirmDelete(pedido.id)}>Excluir</button>
@@ -367,20 +419,12 @@ const Pedidos = () => {
         </tbody>
       </table>
 
-      {confirmDelete !== null && (
+      {confirmDelete && (
         <div className={styles.overlay}>
           <div className={styles.modal}>
-            <div className={styles.modalHeader}>
-              <h2>Confirmar Exclusão</h2>
-              <button className={styles.closeButton} onClick={() => setConfirmDelete(null)}>×</button>
-            </div>
-            <div className={styles.modalBody}>
-              <p>Tem certeza que deseja excluir este pedido?</p>
-            </div>
-            <div className={styles.modalFooter}>
-              <button className={styles.confirmButton} onClick={() => handleDelete(confirmDelete)}>Confirmar</button>
-              <button className={styles.cancelButton} onClick={() => setConfirmDelete(null)}>Cancelar</button>
-            </div>
+            <p>Tem certeza que deseja excluir este pedido?</p>
+            <button onClick={() => handleDelete(confirmDelete)}>Sim</button>
+            <button onClick={() => setConfirmDelete(null)}>Não</button>
           </div>
         </div>
       )}
