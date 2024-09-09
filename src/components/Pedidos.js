@@ -239,85 +239,6 @@ const Pedidos = () => {
             </div>
 
             <div className={styles.form}>
-              <label>
-                Descrição
-                <input
-                  type="text"
-                  placeholder="Descrição"
-                  value={editingPedido ? editingPedido.description : newPedido.description}
-                  onChange={(e) => (editingPedido ? handleInputChange('description', e.target.value) : handleNewInputChange('description', e.target.value))}
-                />
-              </label>
-              <label>
-                Data de Envio
-                <input
-                  type="date"
-                  value={editingPedido ? formatDate(editingPedido.shippingDate) : newPedido.shippingDate}
-                  onChange={(e) => (editingPedido ? handleInputChange('shippingDate', e.target.value) : handleNewInputChange('shippingDate', e.target.value))}
-                />
-              </label>
-              <label>
-                Data de Entrega Prevista
-                <input
-                  type="date"
-                  value={editingPedido ? formatDate(editingPedido.expectedDeliveryDate) : newPedido.expectedDeliveryDate}
-                  onChange={(e) => (editingPedido ? handleInputChange('expectedDeliveryDate', e.target.value) : handleNewInputChange('expectedDeliveryDate', e.target.value))}
-                />
-              </label>
-              <label>
-                Estado
-                <input
-                  type="text"
-                  placeholder="Estado"
-                  value={editingPedido ? editingPedido.state : newPedido.state}
-                  onChange={(e) => (editingPedido ? handleInputChange('state', e.target.value) : handleNewInputChange('state', e.target.value))}
-                />
-              </label>
-              <label>
-                Nº de Parcelas
-                <input
-                  type="number"
-                  placeholder="Número de Parcelas"
-                  value={editingPedido ? editingPedido.nInstallments : newPedido.nInstallments}
-                  onChange={(e) => (editingPedido ? handleInputChange('nInstallments', e.target.value) : handleNewInputChange('nInstallments', e.target.value))}
-                />
-              </label>
-              <label>
-                Usuário
-                <select
-                  value={editingPedido ? editingPedido.fkUserId : newPedido.fkUserId}
-                  onChange={(e) => (editingPedido ? handleInputChange('fkUserId', e.target.value) : handleNewInputChange('fkUserId', e.target.value))}
-                >
-                  <option value="">Selecione um Usuário</option>
-                  {users.map(user => (
-                    <option key={user.id} value={user.id}>{user.username}</option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                Cliente
-                <select
-                  value={editingPedido ? editingPedido.fkClientId : newPedido.fkClientId}
-                  onChange={(e) => (editingPedido ? handleInputChange('fkClientId', e.target.value) : handleNewInputChange('fkClientId', e.target.value))}
-                >
-                  <option value="">Selecione um Cliente</option>
-                  {clients.map(client => (
-                    <option key={client.id} value={client.id}>{client.name}</option>
-                  ))}
-                </select>
-              </label>
-
-              <label>
-                Desconto (%)
-                <input
-                  type="number"
-                  min="0"
-                  placeholder="Desconto (%)"
-                  value={editingPedido ? editingPedido.discount : newPedido.discount}
-                  onChange={(e) => (editingPedido ? handleInputChange('discount', e.target.value) : handleNewInputChange('discount', e.target.value))}
-                />
-              </label>
-
               <h3>Itens do Pedido</h3>
               {editingPedido ? (
                 editingPedido.items.map((item, index) => (
@@ -367,6 +288,129 @@ const Pedidos = () => {
               )}
               <button className={styles.addItemButton} onClick={addItem}>Adicionar Item</button>
 
+               <label>
+                Desconto (%)
+                <input
+                  type="number"
+                  min="0"
+                  placeholder="Desconto (%)"
+                  value={editingPedido ? editingPedido.discount : newPedido.discount}
+                  onChange={(e) => (editingPedido ? handleInputChange('discount', e.target.value) : handleNewInputChange('discount', e.target.value))}
+                />
+              </label>
+<label>
+                Cliente
+                <select
+                  value={editingPedido ? editingPedido.fkClientId : newPedido.fkClientId}
+                  onChange={(e) => (editingPedido ? handleInputChange('fkClientId', e.target.value) : handleNewInputChange('fkClientId', e.target.value))}
+                >
+                  <option value="">Selecione um Cliente</option>
+                  {clients.map(client => (
+                    <option key={client.id} value={client.id}>{client.name}</option>
+                  ))}
+                </select>
+              </label>
+
+              
+              <label>
+  Data de Envio
+  <input
+    type="date"
+    min={new Date().toISOString().split("T")[0]}  // Define a data mínima como a data atual
+    value={editingPedido ? formatDate(editingPedido.shippingDate) : newPedido.shippingDate}
+    onChange={(e) => (editingPedido ? handleInputChange('shippingDate', e.target.value) : handleNewInputChange('shippingDate', e.target.value))}
+  />
+</label>
+
+<label>
+  Data de Entrega Prevista
+  <input
+    type="date"
+    min={editingPedido ? editingPedido.shippingDate : newPedido.shippingDate}  // Define a data mínima como a data de envio
+    value={editingPedido ? formatDate(editingPedido.expectedDeliveryDate) : newPedido.expectedDeliveryDate}
+    onChange={(e) => {
+      const newDate = e.target.value;
+      const shippingDate = editingPedido ? editingPedido.shippingDate : newPedido.shippingDate;
+      
+      // Verifica se a data de entrega prevista é maior ou igual à data de envio
+      if (newDate >= shippingDate) {
+        if (editingPedido) {
+          handleInputChange('expectedDeliveryDate', newDate);
+        } else {
+          handleNewInputChange('expectedDeliveryDate', newDate);
+        }
+      } else {
+        alert('A data de entrega prevista não pode ser menor que a data de envio.');
+      }
+    }}
+  />
+</label>
+              <label>
+                Estado
+                <input
+                  type="text"
+                  placeholder="Estado"
+                  value={editingPedido ? editingPedido.state : newPedido.state}
+                  onChange={(e) => (editingPedido ? handleInputChange('state', e.target.value) : handleNewInputChange('state', e.target.value))}
+                />
+              </label>
+<label>
+  Nº de Parcelas
+  <input
+    type="text"
+    placeholder="Número de Parcelas"
+    value={editingPedido ? editingPedido.nInstallments : newPedido.nInstallments}
+    onChange={(e) => {
+      const value = e.target.value;
+
+      // Verifica se o valor é um número entre 1 e 36
+      if (/^\d*$/.test(value)) { // Permite apenas dígitos
+        const parsedValue = parseInt(value, 10);
+        if (!isNaN(parsedValue) && parsedValue <= 36 && parsedValue >= 1) {
+          if (editingPedido) {
+            handleInputChange('nInstallments', value);
+          } else {
+            handleNewInputChange('nInstallments', value);
+          }
+        } else if (value === '') {
+          // Se o campo estiver vazio, atualiza normalmente para permitir a remoção do valor
+          if (editingPedido) {
+            handleInputChange('nInstallments', value);
+          } else {
+            handleNewInputChange('nInstallments', value);
+          }
+        }
+      }
+    }}
+  />
+</label>
+              <label>
+                Usuário
+                <select
+                  value={editingPedido ? editingPedido.fkUserId : newPedido.fkUserId}
+                  onChange={(e) => (editingPedido ? handleInputChange('fkUserId', e.target.value) : handleNewInputChange('fkUserId', e.target.value))}
+                >
+                  <option value="">Selecione um Usuário</option>
+                  {users.map(user => (
+                    <option key={user.id} value={user.id}>{user.username}</option>
+                  ))}
+                </select>
+              </label>
+              
+<label>
+                Descrição
+                <input
+                  type="text"
+                  placeholder="Descrição"
+                  value={editingPedido ? editingPedido.description : newPedido.description}
+                  onChange={(e) => (editingPedido ? handleInputChange('description', e.target.value) : handleNewInputChange('description', e.target.value))}
+                />
+              </label>
+              
+
+              
+
+             
               <h3>Total: {editingPedido ? calculateTotalValue(editingPedido.items, editingPedido.discount) : calculateTotalValue(newPedido.items, newPedido.discount)}</h3>
 
               <button className={styles.saveButton} onClick={editingPedido ? () => handleSave(editingPedido.id) : handleCreate}>

@@ -1,6 +1,6 @@
 import React from 'react';
 import { BrowserRouter as Router, Route, Routes, Link } from 'react-router-dom';
-import CidadesList from './components/CidadesList';
+import Relatorios from './components/Relatorios';
 import Pedidos from './components/Pedidos';
 import Clientes from './components/Clientes';
 import Produtos from './components/Produtos';
@@ -15,9 +15,6 @@ const App = () => {
           <img src={logo} alt="Logo" className="logo" />
           <ul>
             <li>
-              <Link to="/cidades">Cidades</Link>
-            </li>
-            <li>
               <Link to="/pedidos">Pedidos</Link>
             </li>
             <li>
@@ -26,11 +23,14 @@ const App = () => {
             <li>
               <Link to="/produtos">Produtos</Link>
             </li>
+            <li>
+              <Link to="/relatorios">Relatórios</Link>
+            </li>
           </ul>
         </nav>
         <div className="content">
           <Routes>
-            <Route path="/cidades" element={<CidadesList />} />
+            <Route path="/relatorios" element={<Relatorios />} />
             <Route path="/pedidos" element={<Pedidos />} />
             <Route path="/clientes" element={<Clientes />} />
             <Route path="/produtos" element={<Produtos />} />
