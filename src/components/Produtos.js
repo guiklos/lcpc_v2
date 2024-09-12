@@ -20,8 +20,9 @@ const Produtos = () => {
     length: '',
   });
   const [editingProduct, setEditingProduct] = useState(null);
-  const [isAdding, setIsAdding] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false); // Controle do modo de edição
   const [confirmDeleteProduct, setConfirmDeleteProduct] = useState(null);
+  const [validationError, setValidationError] = useState('');
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -39,13 +40,31 @@ const Produtos = () => {
   }, []);
 
   const handleInputChange = (field, value) => {
-    setNewProduct((prevProduct) => ({
-      ...prevProduct,
-      [field]: value,
-    }));
+    if (isEditMode && editingProduct) {
+      setEditingProduct(prevProduct => ({
+        ...prevProduct,
+        [field]: value
+      }));
+    } else {
+      setNewProduct(prevProduct => ({
+        ...prevProduct,
+        [field]: value
+      }));
+    }
+  };
+
+  const validateFields = (product) => {
+    if (product.value < 1 || product.thickness < 1 || product.width < 1 || product.length < 1) {
+      setValidationError('Os valores devem ser maiores ou iguais a 1');
+      return false;
+    }
+    setValidationError('');
+    return true;
   };
 
   const handleCreate = async () => {
+    if (!validateFields(newProduct)) return;
+
     try {
       const newProductData = {
         ...newProduct,
@@ -68,17 +87,19 @@ const Produtos = () => {
       });
       const response = await axios.get('http://localhost:5188/Product');
       setProducts(response.data);
-      setIsAdding(false);
+      setIsEditMode(false);
     } catch (err) {
       setError('Erro ao criar produto');
     }
   };
 
   const handleUpdate = async () => {
+    if (!validateFields(editingProduct)) return;
+
     try {
       await axios.put(`http://localhost:5188/Product/${editingProduct.id}`, editingProduct);
-      alert('Produto atualizado com sucesso!');
       setEditingProduct(null);
+      setIsEditMode(false);
       const response = await axios.get('http://localhost:5188/Product');
       setProducts(response.data);
     } catch (err) {
@@ -89,7 +110,7 @@ const Produtos = () => {
   const handleDelete = async () => {
     try {
       await axios.delete(`http://localhost:5188/Product/${confirmDeleteProduct}`);
-      setProducts((prevProducts) => prevProducts.filter((product) => product.id !== confirmDeleteProduct));
+      setProducts(prevProducts => prevProducts.filter(product => product.id !== confirmDeleteProduct));
       setConfirmDeleteProduct(null);
     } catch (err) {
       setError('Erro ao deletar produto');
@@ -98,11 +119,11 @@ const Produtos = () => {
 
   const openEditModal = (product) => {
     setEditingProduct(product);
-    setIsAdding(true);
+    setIsEditMode(true);
   };
 
   const closeModal = () => {
-    setIsAdding(false);
+    setIsEditMode(false);
     setEditingProduct(null);
   };
 
@@ -123,9 +144,9 @@ const Produtos = () => {
         <h1>Produtos</h1>
       </div>
       <div className={styles.formContainer}>
-        <button onClick={() => setIsAdding(true)} className={styles.createButton}>Adicionar Novo Produto</button>
+        <button onClick={() => setIsEditMode(true)} className={styles.createButton}>Adicionar Novo Produto</button>
         <Modal
-          isOpen={isAdding}
+          isOpen={isEditMode || !!editingProduct}
           onRequestClose={closeModal}
           contentLabel={editingProduct ? 'Editar Produto' : 'Criar Produto'}
           className={styles.modal}
@@ -183,6 +204,7 @@ const Produtos = () => {
             />
             <span>cm</span>
           </div>
+          {validationError && <p className={styles.validationError}>{validationError}</p>}
           <button className={styles.submitButton} onClick={editingProduct ? handleUpdate : handleCreate}>
             {editingProduct ? 'Salvar' : 'Criar'}
           </button>
@@ -226,8 +248,8 @@ const Produtos = () => {
                 <td>{product.length} cm</td>
                 <td>{new Date(product.createdAt).toLocaleDateString('pt-BR')}</td>
                 <td>
-                  <button onClick={() => openEditModal(product)}>Editar</button>
-                  <button onClick={() => openDeleteConfirmModal(product.id)}>Excluir</button>
+                  <button className={styles.editButton} onClick={() => openEditModal(product)}>Editar</button>
+                  <button className={styles.deleteButton} onClick={() => openDeleteConfirmModal(product.id)}>Excluir</button>
                 </td>
               </tr>
             ))}

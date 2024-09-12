@@ -160,7 +160,7 @@ const Pedidos = () => {
     setSuccessMessage('Pedido salvo com sucesso!');
   } catch (err) {
     setError('Erro ao salvar pedido');
-  }
+  }setShowForm(false);
 };
 
   const handleDelete = async (id) => {
@@ -503,7 +503,7 @@ const Pedidos = () => {
             <tr key={pedido.id}>
               <td>{pedido.description}</td>
               <td>{new Date(pedido.shippingDate).toLocaleDateString('pt-BR')}</td>
-              <td>{new Date(pedido.expectedDeliveryDate).toLocaleDateString('pt-BR')}</td>
+              <td>{new Date(pedido.shippingDate).toLocaleDateString('pt-BR')}</td>
               <td>{pedido.state}</td>
               <td>{pedido.nInstallments}</td>
               <td>{getClientNameById(pedido.fkClientId)}</td>

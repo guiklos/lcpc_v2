@@ -15,6 +15,7 @@
 }
 
 .createButton {
+     width: 20%;
      padding: 10px 15px;
      border: none;
      border-radius: 4px;
@@ -157,18 +158,26 @@
      margin-top: 5px;
 }
 
+.editButton,
 .deleteButton {
      background: #007bff;
      color: #fff;
      border: none;
-     padding: 5px 10px;
+     padding: 6px 12px;
      border-radius: 4px;
      cursor: pointer;
-     font-size: 0.9rem;
-     margin-right: 5px;
-     transition: background-color 0.3s ease;
+     font-size: 0.85rem;
+     transition: background 0.3s ease;
+}
+
+.editButton:hover {
+     background: #0056b3;
+}
+
+.deleteButton {
+     background: #f44336;
 }
 
 .deleteButton:hover {
-     background-color: #0056b3;
+     background: #d32f2f;
 }

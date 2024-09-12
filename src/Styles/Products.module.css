@@ -264,3 +264,27 @@
      color: #666;
      /* Ajuste conforme necessário */
 }
+
+.editButton,
+.deleteButton {
+     background: #007bff;
+     color: #fff;
+     border: none;
+     padding: 6px 12px;
+     border-radius: 4px;
+     cursor: pointer;
+     font-size: 0.85rem;
+     transition: background 0.3s ease;
+}
+
+.editButton:hover {
+     background: #0056b3;
+}
+
+.deleteButton {
+     background: #f44336;
+}
+
+.deleteButton:hover {
+     background: #d32f2f;
+}

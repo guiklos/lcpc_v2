@@ -192,8 +192,8 @@ const Clientes = () => {
                   <td>{formatCNPJ(client.cnpj)}</td>
                   <td>{cityName}</td>
                   <td>
-                    <button onClick={() => openModal(client)}>Editar</button>
-                    <button onClick={() => openConfirmDeleteModal(client)}>Excluir</button>
+                    <button className={styles.editButton} onClick={() => openModal(client)}>Editar</button>
+                    <button className={styles.deleteButton} onClick={() => openConfirmDeleteModal(client)}>Excluir</button>
                   </td>
                 </tr>
               );
