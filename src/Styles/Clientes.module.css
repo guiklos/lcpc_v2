@@ -156,3 +156,19 @@
      font-size: 12px;
      margin-top: 5px;
 }
+
+.deleteButton {
+     background: #007bff;
+     color: #fff;
+     border: none;
+     padding: 5px 10px;
+     border-radius: 4px;
+     cursor: pointer;
+     font-size: 0.9rem;
+     margin-right: 5px;
+     transition: background-color 0.3s ease;
+}
+
+.deleteButton:hover {
+     background-color: #0056b3;
+}

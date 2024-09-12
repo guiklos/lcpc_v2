@@ -26,6 +26,8 @@ const Pedidos = () => {
   const [products, setProducts] = useState([]);
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [successMessage, setSuccessMessage] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({});
+
 
   useEffect(() => {
     const fetchData = async () => {
@@ -124,23 +126,42 @@ const Pedidos = () => {
   };
 
   const handleSave = async (pedidoId) => {
-    try {
-      const formattedPedido = {
-        ...editingPedido,
-        shippingDate: formatDate(editingPedido.shippingDate),
-        expectedDeliveryDate: formatDate(editingPedido.expectedDeliveryDate)
-      };
+  try {
+    // Limpa erros anteriores
+    setFieldErrors({});
 
-      await axios.put(`http://localhost:5188/Order/${pedidoId}`, formattedPedido);
-      const response = await axios.get('http://localhost:5188/Order');
-      setPedidos(response.data);
-      setEditingPedido(null);
-      setShowForm(false);
-      setSuccessMessage('Pedido salvo com sucesso!');
-    } catch (err) {
-      setError('Erro ao salvar pedido');
+    // Valida os campos
+    const errors = {};
+    if (!editingPedido.description) errors.description = 'Descrição é obrigatória';
+    if (!editingPedido.fkClientId) errors.fkClientId = 'Cliente é obrigatório';
+    if (!editingPedido.shippingDate) errors.shippingDate = 'Data de envio é obrigatória';
+    if (!editingPedido.expectedDeliveryDate) errors.expectedDeliveryDate = 'Data de entrega prevista é obrigatória';
+    if (editingPedido.expectedDeliveryDate < editingPedido.shippingDate) errors.expectedDeliveryDate = 'Data de entrega prevista não pode ser menor que a data de envio';
+    if (!editingPedido.state) errors.state = 'Estado é obrigatório';
+    if (editingPedido.nInstallments < 1 || editingPedido.nInstallments > 36) errors.nInstallments = 'Número de parcelas deve estar entre 1 e 36';
+    
+    // Se houver erros, atualize o estado e não envie a requisição
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      return;
     }
-  };
+
+    const formattedPedido = {
+      ...editingPedido,
+      shippingDate: formatDate(editingPedido.shippingDate),
+      expectedDeliveryDate: formatDate(editingPedido.expectedDeliveryDate)
+    };
+
+    await axios.put(`http://localhost:5188/Order/${pedidoId}`, formattedPedido);
+    const response = await axios.get('http://localhost:5188/Order');
+    setPedidos(response.data);
+    setEditingPedido(null);
+    setShowForm(true);  // Não feche o modal
+    setSuccessMessage('Pedido salvo com sucesso!');
+  } catch (err) {
+    setError('Erro ao salvar pedido');
+  }
+};
 
   const handleDelete = async (id) => {
     try {
@@ -159,45 +180,65 @@ const Pedidos = () => {
   };
 
   const handleCreate = async () => {
-    try {
-      const formattedPedido = {
-        ...newPedido,
-        shippingDate: formatDate(newPedido.shippingDate),
-        expectedDeliveryDate: formatDate(newPedido.expectedDeliveryDate)
-      };
+  try {
+    // Limpa erros anteriores
+    setFieldErrors({});
 
-      const response = await axios.post('http://localhost:5188/Order', formattedPedido);
-      const createdPedido = response.data;
-
-      for (const item of newPedido.items) {
-        await axios.post('http://localhost:5188/ItemOrder', {
-          ...item,
-          fkOrderId: createdPedido.id
-        });
-      }
-
-      const pedidosResponse = await axios.get('http://localhost:5188/Order');
-      const itemsResponse = await axios.get('http://localhost:5188/ItemOrder');
-      setPedidos(pedidosResponse.data);
-      setItemsOrdem(itemsResponse.data);
-      setNewPedido({
-        description: '',
-        totalValue: 0,
-        discount: 0,
-        shippingDate: '',
-        expectedDeliveryDate: '',
-        state: '',
-        nInstallments: '',
-        fkUserId: '',
-        fkClientId: '',
-        items: []
-      });
-      setShowForm(false);
-      setSuccessMessage('Pedido criado com sucesso!');
-    } catch (err) {
-      setError('Erro ao criar pedido');
+    // Valida os campos
+    const errors = {};
+    if (!newPedido.description) errors.description = 'Descrição é obrigatória';
+    if (!newPedido.fkClientId) errors.fkClientId = 'Cliente é obrigatório';
+    if (!newPedido.shippingDate) errors.shippingDate = 'Data de envio é obrigatória';
+    if (!newPedido.expectedDeliveryDate) errors.expectedDeliveryDate = 'Data de entrega prevista é obrigatória';
+    if (newPedido.expectedDeliveryDate < newPedido.shippingDate) errors.expectedDeliveryDate = 'Data de entrega prevista não pode ser menor que a data de envio';
+    if (!newPedido.state) errors.state = 'Estado é obrigatório';
+    if (newPedido.nInstallments < 1 || newPedido.nInstallments > 36) errors.nInstallments = 'Número de parcelas deve estar entre 1 e 36';
+    
+    // Se houver erros, atualize o estado e não envie a requisição
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      return;
     }
-  };
+
+    const formattedPedido = {
+      ...newPedido,
+      shippingDate: formatDate(newPedido.shippingDate),
+      expectedDeliveryDate: formatDate(newPedido.expectedDeliveryDate)
+    };
+
+    const response = await axios.post('http://localhost:5188/Order', formattedPedido);
+    const createdPedido = response.data;
+
+    for (const item of newPedido.items) {
+      await axios.post('http://localhost:5188/ItemOrder', {
+        ...item,
+        fkOrderId: createdPedido.id
+      });
+    }
+
+    const pedidosResponse = await axios.get('http://localhost:5188/Order');
+    const itemsResponse = await axios.get('http://localhost:5188/ItemOrder');
+    setPedidos(pedidosResponse.data);
+    setItemsOrdem(itemsResponse.data);
+    setNewPedido({
+      description: '',
+      totalValue: 0,
+      discount: 0,
+      shippingDate: '',
+      expectedDeliveryDate: '',
+      state: '',
+      nInstallments: '',
+      fkUserId: '',
+      fkClientId: '',
+      items: []
+    });
+    setShowForm(true);  // Não feche o modal
+    setSuccessMessage('Pedido criado com sucesso!');
+  } catch (err) {
+    setError('Erro ao criar pedido');
+  }
+  setShowForm(false);
+};
 
   const getUserNameById = (userId) => {
     const user = users.find(user => user.id === userId);
@@ -289,30 +330,47 @@ const Pedidos = () => {
               <button className={styles.addItemButton} onClick={addItem}>Adicionar Item</button>
 
                <label>
-                Desconto (%)
-                <input
-                  type="number"
-                  min="0"
-                  placeholder="Desconto (%)"
-                  value={editingPedido ? editingPedido.discount : newPedido.discount}
-                  onChange={(e) => (editingPedido ? handleInputChange('discount', e.target.value) : handleNewInputChange('discount', e.target.value))}
-                />
-              </label>
+  Desconto (%)
+  <input
+    type="number"
+    placeholder="Desconto (%)"
+    value={editingPedido ? editingPedido.discount : newPedido.discount}
+    onChange={(e) => {
+      const value = e.target.value;
+
+      // Permitir apenas números entre 0 e 100, ou vazio para permitir edição temporária
+      if (value === '' || (Number(value) >= 0 && Number(value) <= 100)) {
+        editingPedido ? handleInputChange('discount', value) : handleNewInputChange('discount', value);
+      }
+    }}
+    onBlur={(e) => {
+      // Garante que o valor final seja entre 0 e 100 ao sair do campo
+      let finalValue = Number(e.target.value);
+      if (finalValue < 0) finalValue = 0;
+      if (finalValue > 100) finalValue = 100;
+
+      editingPedido ? handleInputChange('discount', finalValue) : handleNewInputChange('discount', finalValue);
+    }}
+  />
+</label>
+
+
 <label>
-                Cliente
-                <select
-                  value={editingPedido ? editingPedido.fkClientId : newPedido.fkClientId}
-                  onChange={(e) => (editingPedido ? handleInputChange('fkClientId', e.target.value) : handleNewInputChange('fkClientId', e.target.value))}
-                >
-                  <option value="">Selecione um Cliente</option>
-                  {clients.map(client => (
-                    <option key={client.id} value={client.id}>{client.name}</option>
-                  ))}
-                </select>
-              </label>
+  Cliente
+  <select
+    value={editingPedido ? editingPedido.fkClientId : newPedido.fkClientId}
+    onChange={(e) => (editingPedido ? handleInputChange('fkClientId', e.target.value) : handleNewInputChange('fkClientId', e.target.value))}
+  >
+    <option value="">Selecione um Cliente</option>
+    {clients.map(client => (
+      <option key={client.id} value={client.id}>{client.name}</option>
+    ))}
+  </select>
+  {fieldErrors.fkClientId && <span className={styles.error}>{fieldErrors.fkClientId}</span>}
+</label>
 
               
-              <label>
+<label>
   Data de Envio
   <input
     type="date"
@@ -320,6 +378,7 @@ const Pedidos = () => {
     value={editingPedido ? formatDate(editingPedido.shippingDate) : newPedido.shippingDate}
     onChange={(e) => (editingPedido ? handleInputChange('shippingDate', e.target.value) : handleNewInputChange('shippingDate', e.target.value))}
   />
+  {fieldErrors.shippingDate && <span className={styles.error}>{fieldErrors.shippingDate}</span>}
 </label>
 
 <label>
@@ -344,16 +403,18 @@ const Pedidos = () => {
       }
     }}
   />
+  {fieldErrors.expectedDeliveryDate && <span className={styles.error}>{fieldErrors.expectedDeliveryDate}</span>}
 </label>
               <label>
-                Estado
-                <input
-                  type="text"
-                  placeholder="Estado"
-                  value={editingPedido ? editingPedido.state : newPedido.state}
-                  onChange={(e) => (editingPedido ? handleInputChange('state', e.target.value) : handleNewInputChange('state', e.target.value))}
-                />
-              </label>
+  Estado
+  <input
+    type="text"
+    placeholder="Estado"
+    value={editingPedido ? editingPedido.state : newPedido.state}
+    onChange={(e) => (editingPedido ? handleInputChange('state', e.target.value) : handleNewInputChange('state', e.target.value))}
+  />
+  {fieldErrors.state && <span className={styles.error}>{fieldErrors.state}</span>}
+</label>
 <label>
   Nº de Parcelas
   <input
@@ -398,14 +459,15 @@ const Pedidos = () => {
               </label>
               
 <label>
-                Descrição
-                <input
-                  type="text"
-                  placeholder="Descrição"
-                  value={editingPedido ? editingPedido.description : newPedido.description}
-                  onChange={(e) => (editingPedido ? handleInputChange('description', e.target.value) : handleNewInputChange('description', e.target.value))}
-                />
-              </label>
+  Descrição
+  <input
+    type="text"
+    placeholder="Descrição"
+    value={editingPedido ? editingPedido.description : newPedido.description}
+    onChange={(e) => (editingPedido ? handleInputChange('description', e.target.value) : handleNewInputChange('description', e.target.value))}
+  />
+  {fieldErrors.description && <span className={styles.error}>{fieldErrors.description}</span>}
+</label>
               
 
               
@@ -429,10 +491,10 @@ const Pedidos = () => {
             <th>Data de Entrega Prevista</th>
             <th>Estado</th>
             <th>Parcelas</th>
-            <th>Usuário</th>
             <th>Cliente</th>
-            <th>Total</th>
+            <th>Total{" (R$)"}</th>
             <th>Itens do pedido</th>
+            
             <th>Ações</th>
           </tr>
         </thead>
@@ -440,11 +502,10 @@ const Pedidos = () => {
           {pedidos.map(pedido => (
             <tr key={pedido.id}>
               <td>{pedido.description}</td>
-              <td>{pedido.shippingDate}</td>
-              <td>{pedido.expectedDeliveryDate}</td>
+              <td>{new Date(pedido.shippingDate).toLocaleDateString('pt-BR')}</td>
+              <td>{new Date(pedido.expectedDeliveryDate).toLocaleDateString('pt-BR')}</td>
               <td>{pedido.state}</td>
               <td>{pedido.nInstallments}</td>
-              <td>{getUserNameById(pedido.fkUserId)}</td>
               <td>{getClientNameById(pedido.fkClientId)}</td>
               <td>{pedido.totalValue}</td>
               <td>

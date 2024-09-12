@@ -239,3 +239,28 @@
 .table th {
      background: #f4f4f4;
 }
+
+
+.inputWithUnit {
+     position: relative;
+     display: flex;
+     align-items: center;
+     margin-bottom: 15px;
+     /* Ajuste conforme necessário */
+}
+
+.inputWithUnit input {
+     width: 100%;
+     padding-right: 40px;
+     /* Espaço para o texto da unidade */
+}
+
+.inputWithUnit span {
+     position: absolute;
+     right: 10px;
+     /* Ajuste conforme necessário */
+     font-size: 14px;
+     /* Ajuste conforme necessário */
+     color: #666;
+     /* Ajuste conforme necessário */
+}

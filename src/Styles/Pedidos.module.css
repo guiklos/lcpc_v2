@@ -194,9 +194,8 @@
 /* Estilos da Mensagem de Sucesso e Erro */
 .successMessage,
 .error {
-     margin-top: 10px;
-     padding: 10px;
-     border-radius: 4px;
+     color: red;
+     font-size: 0.8rem;
 }
 
 .successMessage {

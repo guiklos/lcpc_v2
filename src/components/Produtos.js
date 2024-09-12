@@ -156,24 +156,33 @@ const Produtos = () => {
             value={editingProduct ? editingProduct.value : newProduct.value}
             onChange={(e) => handleInputChange('value', e.target.value)}
           />
-          <input
-            type="number"
-            placeholder="Espessura"
-            value={editingProduct ? editingProduct.thickness : newProduct.thickness}
-            onChange={(e) => handleInputChange('thickness', e.target.value)}
-          />
-          <input
-            type="number"
-            placeholder="Largura"
-            value={editingProduct ? editingProduct.width : newProduct.width}
-            onChange={(e) => handleInputChange('width', e.target.value)}
-          />
-          <input
-            type="number"
-            placeholder="Comprimento"
-            value={editingProduct ? editingProduct.length : newProduct.length}
-            onChange={(e) => handleInputChange('length', e.target.value)}
-          />
+          <div className={styles.inputWithUnit}>
+            <input
+              type="number"
+              placeholder="Espessura"
+              value={editingProduct ? editingProduct.thickness : newProduct.thickness}
+              onChange={(e) => handleInputChange('thickness', e.target.value)}
+            />
+            <span>cm</span>
+          </div>
+          <div className={styles.inputWithUnit}>
+            <input
+              type="number"
+              placeholder="Largura"
+              value={editingProduct ? editingProduct.width : newProduct.width}
+              onChange={(e) => handleInputChange('width', e.target.value)}
+            />
+            <span>cm</span>
+          </div>
+          <div className={styles.inputWithUnit}>
+            <input
+              type="number"
+              placeholder="Comprimento"
+              value={editingProduct ? editingProduct.length : newProduct.length}
+              onChange={(e) => handleInputChange('length', e.target.value)}
+            />
+            <span>cm</span>
+          </div>
           <button className={styles.submitButton} onClick={editingProduct ? handleUpdate : handleCreate}>
             {editingProduct ? 'Salvar' : 'Criar'}
           </button>
@@ -197,14 +206,12 @@ const Produtos = () => {
           <thead>
             <tr>
               <th>Nome</th>
-              <th>Tipo de Produto</th>
               <th>Descrição</th>
-              <th>Valor</th>
-              <th>Espessura</th>
-              <th>Largura</th>
-              <th>Comprimento</th>
-              <th>CreatedAt</th>
-              <th>UpdatedAt</th>
+              <th>Valor{" (R$)"}</th>
+              <th>Espessura (cm)</th>
+              <th>Largura (cm)</th>
+              <th>Comprimento (cm)</th>
+              <th>Criado em:</th>
               <th>Ações</th>
             </tr>
           </thead>
@@ -212,14 +219,12 @@ const Produtos = () => {
             {products.map((product) => (
               <tr key={product.id}>
                 <td>{product.name}</td>
-                <td>{product.productType}</td>
                 <td>{product.description}</td>
                 <td>{product.value}</td>
-                <td>{product.thickness}</td>
-                <td>{product.width}</td>
-                <td>{product.length}</td>
-                <td>{new Date(product.createdAt).toLocaleString()}</td>
-                <td>{product.updatedAt ? new Date(product.updatedAt).toLocaleString() : 'N/A'}</td>
+                <td>{product.thickness} cm</td>
+                <td>{product.width} cm</td>
+                <td>{product.length} cm</td>
+                <td>{new Date(product.createdAt).toLocaleDateString('pt-BR')}</td>
                 <td>
                   <button onClick={() => openEditModal(product)}>Editar</button>
                   <button onClick={() => openDeleteConfirmModal(product.id)}>Excluir</button>
