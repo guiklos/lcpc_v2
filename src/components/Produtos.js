@@ -75,11 +75,11 @@ const Produtos = () => {
     }
 
      // Filtro por tipo de produto
-  if (filters.productType !== '') {
-    result = result.filter(product => 
-      product.productType === Number(filters.productType)
-    );
-  }
+   if (filters.productType !== '') {
+      result = result.filter(product => 
+        product.productType === Number(filters.productType)
+      );
+    }
 
     // Filtro por valor
     if (filters.minValue) {
@@ -151,15 +151,30 @@ const Produtos = () => {
 
   const handleInputChange = (field, value) => {
     if (isEditMode && editingProduct) {
-      setEditingProduct(prevProduct => ({
-        ...prevProduct,
-        [field]: value
-      }));
+      // Para o campo productType, converta para número
+      if (field === 'productType') {
+        setEditingProduct(prevProduct => ({
+          ...prevProduct,
+          [field]: value === '' ? '' : Number(value)
+        }));
+      } else {
+        setEditingProduct(prevProduct => ({
+          ...prevProduct,
+          [field]: value
+        }));
+      }
     } else {
-      setNewProduct(prevProduct => ({
-        ...prevProduct,
-        [field]: value
-      }));
+      if (field === 'productType') {
+        setNewProduct(prevProduct => ({
+          ...prevProduct,
+          [field]: value === '' ? '' : Number(value)
+        }));
+      } else {
+        setNewProduct(prevProduct => ({
+          ...prevProduct,
+          [field]: value
+        }));
+      }
     }
   };
 
@@ -209,7 +224,21 @@ const Produtos = () => {
     if (!validateFields(editingProduct)) return;
 
     try {
-      await axios.put(`http://localhost:5188/Product/${editingProduct.id}`, editingProduct, axiosConfig);
+      const updatedProduct = {
+        ...editingProduct,
+        productType: Number(editingProduct.productType),
+        value: Number(editingProduct.value),
+        thickness: Number(editingProduct.thickness),
+        width: Number(editingProduct.width),
+        length: Number(editingProduct.length),
+      };
+
+      await axios.put(
+        `http://localhost:5188/Product/${editingProduct.id}`, 
+        updatedProduct, 
+        axiosConfig
+      );
+      
       setEditingProduct(null);
       setIsEditMode(false);
       const response = await axios.get('http://localhost:5188/Product', axiosConfig);
@@ -218,6 +247,7 @@ const Produtos = () => {
       setError('Erro ao atualizar produto');
     }
   };
+
 
   const handleDelete = async () => {
     try {
@@ -268,20 +298,20 @@ const Produtos = () => {
         </div>
 
         <div className={styles.filterGroup}>
-  <label>Tipo de Produto</label>
-  <select
-    value={filters.productType}
-    onChange={(e) => handleFilterChange('productType', e.target.value)}
-    className={styles.select}
-  >
-    <option value="">Todos</option>
-    <option value="0">Padrão</option>
-    <option value="1">Pintado</option>
-    <option value="2">Naval</option>
-    <option value="3">Plastificado</option>
-    <option value="4">Virolinha</option>
-    <option value="5">Flexível</option>
-  </select>
+   <label>Tipo de Produto</label>
+      <select
+        value={filters.productType}
+        onChange={(e) => handleFilterChange('productType', e.target.value)}
+        className={styles.select}
+      >
+        <option value="">Todos</option>
+        <option value="0">Padrão</option>
+        <option value="1">Pintado</option>
+        <option value="2">Naval</option>
+        <option value="3">Plastificado</option>
+        <option value="4">Virolinha</option>
+        <option value="5">Flexível</option>
+      </select>
 </div>
 
         <div className={styles.advancedFilters}>
