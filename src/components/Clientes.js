@@ -18,8 +18,15 @@ const Clientes = () => {
   const [cities, setCities] = useState([]);
   const [emailError, setEmailError] = useState(null);
   const [sortOrder, setSortOrder] = useState('asc');
-  const [searchTerm, setSearchTerm] = useState('');
-
+  
+  // Filter states
+  const [filters, setFilters] = useState({
+    name: '',
+    city: '',
+    cnpj: '',
+    email: ''
+  });
+  
   const token = localStorage.getItem('token');
 
   const axiosConfig = {
@@ -63,6 +70,35 @@ const Clientes = () => {
     return [...clientsArray].sort((a, b) => {
       const comparison = a.name.localeCompare(b.name);
       return order === 'asc' ? comparison : -comparison;
+    });
+  };
+
+  const handleFilterChange = (field, value) => {
+    setFilters(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const clearFilters = () => {
+    setFilters({
+      name: '',
+      city: '',
+      cnpj: '',
+      email: ''
+    });
+  };
+
+  const filterClients = (clientsList) => {
+    return clientsList.filter(client => {
+      const cityName = cities.find(city => city.id === client.fkCityId)?.name || '';
+      
+      const nameMatch = client.name.toLowerCase().includes(filters.name.toLowerCase());
+      const cityMatch = !filters.city || cityName.toLowerCase().includes(filters.city.toLowerCase());
+      const cnpjMatch = client.cnpj.includes(filters.cnpj.replace(/\D/g, ''));
+      const emailMatch = client.email.toLowerCase().includes(filters.email.toLowerCase());
+
+      return nameMatch && cityMatch && cnpjMatch && emailMatch;
     });
   };
 
@@ -169,40 +205,65 @@ const Clientes = () => {
     }
   };
 
-  // Função para filtrar clientes pelo nome
-  const filteredClients = clients.filter(client =>
-    client.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
   if (loading) return <p>Carregando...</p>;
   if (error) return <p>{error}</p>;
+
+  const filteredClients = filterClients(clients);
 
   return (
     <div className={styles.container}>
       <div className={styles.header}>
         <h1>Clientes</h1>
         <button
-          onClick={() =>
-            window.location.href =
-              'https://slime-goose-9d2.notion.site/CLIENTES-128f55e7219b8081b0d2c0d051357dd9'
-          }
+          onClick={() => window.location.href = 'https://slime-goose-9d2.notion.site/CLIENTES-128f55e7219b8081b0d2c0d051357dd9'}
           className={styles.helpButton}
         >
           <span className={styles.icon}>?</span>
         </button>
       </div>
+      
       <button className={styles.createButton} onClick={() => openModal()}>
         Adicionar Novo Cliente
       </button>
 
-      <div className={styles.searchContainer}>
-        <input
-          type="text"
-          placeholder="Buscar por nome..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className={styles.searchInput}
-        />
+      <div className={styles.filtersContainer}>
+        <div className={styles.filterGroup}>
+          <input
+            type="text"
+            placeholder="Filtrar por nome..."
+            value={filters.name}
+            onChange={(e) => handleFilterChange('name', e.target.value)}
+            className={styles.filterInput}
+          />
+          
+          <input
+            type="text"
+            placeholder="Filtrar por cidade..."
+            value={filters.city}
+            onChange={(e) => handleFilterChange('city', e.target.value)}
+            className={styles.filterInput}
+          />
+          
+          <InputMask
+            mask="99.999.999/9999-99"
+            placeholder="Filtrar por CNPJ..."
+            value={filters.cnpj}
+            onChange={(e) => handleFilterChange('cnpj', e.target.value)}
+            className={styles.filterInput}
+          />
+          
+          <input
+            type="text"
+            placeholder="Filtrar por email..."
+            value={filters.email}
+            onChange={(e) => handleFilterChange('email', e.target.value)}
+            className={styles.filterInput}
+          />
+          
+          <button onClick={clearFilters} className={styles.clearFiltersButton}>
+            Limpar Filtros
+          </button>
+        </div>
       </div>
 
       <div className={styles.tableContainer}>
@@ -228,8 +289,7 @@ const Clientes = () => {
           </thead>
           <tbody>
             {filteredClients.map((client) => {
-              const cityName =
-                cities.find((city) => city.id === client.fkCityId)?.name || 'Não especificado';
+              const cityName = cities.find((city) => city.id === client.fkCityId)?.name || 'Não especificado';
 
               return (
                 <tr key={client.id}>
@@ -246,10 +306,7 @@ const Clientes = () => {
                     <button className={styles.editButton} onClick={() => openModal(client)}>
                       Editar
                     </button>
-                    <button
-                      className={styles.deleteButton}
-                      onClick={() => openConfirmDeleteModal(client)}
-                    >
+                    <button className={styles.deleteButton} onClick={() => openConfirmDeleteModal(client)}>
                       Excluir
                     </button>
                   </td>

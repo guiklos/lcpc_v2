@@ -13,10 +13,11 @@ const getStateLabel = (stateValue) => {
   };
 
 const OrderStateLabels = {
-  [OrderState.AGUARDANDO_ENVIO]: 'Aguardando envio',
-  [OrderState.ENVIADO]: 'Enviado',
-  [OrderState.ENTREGUE]: 'Entregue'
-};
+    [OrderState.AGUARDANDO_ENVIO]: 'Aguardando envio',
+    [OrderState.ENVIADO]: 'Enviado',
+    [OrderState.ENTREGUE]: 'Entregue'
+  };
+
 
 const Pedidos = () => {
   const [pedidos, setPedidos] = useState([]);
@@ -32,7 +33,7 @@ const Pedidos = () => {
     discount: 0,
     shippingDate: '',
     expectedDeliveryDate: '',
-    state: OrderState.AGUARDANDO_ENVIO,
+    state: 0, // AGUARDANDO_ENVIO
     nInstallments: '',
     fkUserId: '',
     fkClientId: '',
@@ -57,8 +58,13 @@ const Pedidos = () => {
     endDate: ''
   });
 
+  const getSortedClients = () => {
+    return [...clients].sort((a, b) => a.name.localeCompare(b.name));
+  };
 
-  
+  const getSortedProducts = () => {
+    return [...products].sort((a, b) => a.name.localeCompare(b.name));
+  };
 
   const token = localStorage.getItem('token');
 
@@ -378,7 +384,7 @@ const applyFilters = () => {
 
       const formattedPedido = {
         ...newPedido,
-        state: OrderState.AGUARDANDO_ENVIO, // Always start with state 0
+        state: OrderState.AGUARDANDO_ENVIO,
         shippingDate: formatDate(newPedido.shippingDate),
         expectedDeliveryDate: formatDate(newPedido.expectedDeliveryDate)
       };
@@ -489,7 +495,7 @@ const applyFilters = () => {
               className={styles.filterSelect}
             >
               <option value="">Todos os clientes</option>
-              {clients.map(client => (
+              {getSortedClients().map(client => (
                 <option key={client.id} value={client.id}>{client.name}</option>
               ))}
             </select>
@@ -543,26 +549,24 @@ const applyFilters = () => {
         <div className={styles.overlay}>
           <div className={styles.modal}>
             <div className={styles.modalHeader}>
-              {renderStateSelect()}
               <h2>{editingPedido ? 'Editar Pedido' : 'Criar Pedido'}</h2>
               <button className={styles.closeButton} onClick={() => { setShowForm(false); setEditingPedido(null); }}>×</button>
             </div>
 
             <div className={styles.form}>
-              
-<label>
-  Cliente
-  <select
-    value={editingPedido ? editingPedido.fkClientId : newPedido.fkClientId}
-    onChange={(e) => (editingPedido ? handleInputChange('fkClientId', e.target.value) : handleNewInputChange('fkClientId', e.target.value))}
-  >
-    <option value="">Selecione um Cliente</option>
-    {clients.map(client => (
-      <option key={client.id} value={client.id}>{client.name}</option>
-    ))}
-  </select>
-  {fieldErrors.fkClientId && <span className={styles.error}>{fieldErrors.fkClientId}</span>}
-</label>
+              <label>
+                Cliente
+                <select
+                  value={editingPedido ? editingPedido.fkClientId : newPedido.fkClientId}
+                  onChange={(e) => (editingPedido ? handleInputChange('fkClientId', e.target.value) : handleNewInputChange('fkClientId', e.target.value))}
+                >
+                  <option value="">Selecione um Cliente</option>
+                  {getSortedClients().map(client => (
+                    <option key={client.id} value={client.id}>{client.name}</option>
+                  ))}
+                </select>
+                {fieldErrors.fkClientId && <span className={styles.error}>{fieldErrors.fkClientId}</span>}
+              </label>
               <h3>Itens do Pedido</h3>
               {editingPedido ? (
                 editingPedido.items.map((item, index) => (
@@ -674,16 +678,8 @@ const applyFilters = () => {
   />
   {fieldErrors.expectedDeliveryDate && <span className={styles.error}>{fieldErrors.expectedDeliveryDate}</span>}
 </label>
-              <label>
-  Estado
-  <input
-    type="text"
-    placeholder="Estado"
-    value={editingPedido ? editingPedido.state : newPedido.state}
-    onChange={(e) => (editingPedido ? handleInputChange('state', e.target.value) : handleNewInputChange('state', e.target.value))}
-  />
-  {fieldErrors.state && <span className={styles.error}>{fieldErrors.state}</span>}
-</label>
+{renderStateSelect()}
+             
 <label>
   Nº de Parcelas
   <input
