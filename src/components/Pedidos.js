@@ -2,8 +2,26 @@ import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import styles from '../Styles/Pedidos.module.css';
 
+ const OrderState = {
+  AGUARDANDO_ENVIO: 0,
+  ENVIADO: 1,
+  ENTREGUE: 2
+};
+
+const getStateLabel = (stateValue) => {
+    return OrderStateLabels[stateValue] || 'Estado desconhecido';
+  };
+
+const OrderStateLabels = {
+  [OrderState.AGUARDANDO_ENVIO]: 'Aguardando envio',
+  [OrderState.ENVIADO]: 'Enviado',
+  [OrderState.ENTREGUE]: 'Entregue'
+};
+
 const Pedidos = () => {
   const [pedidos, setPedidos] = useState([]);
+  const [filteredPedidos, setFilteredPedidos] = useState([]);
+  const [searchTerm, setSearchTerm] = useState(''); 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [editingPedido, setEditingPedido] = useState(null);
@@ -14,7 +32,7 @@ const Pedidos = () => {
     discount: 0,
     shippingDate: '',
     expectedDeliveryDate: '',
-    state: '',
+    state: OrderState.AGUARDANDO_ENVIO,
     nInstallments: '',
     fkUserId: '',
     fkClientId: '',
@@ -27,23 +45,121 @@ const Pedidos = () => {
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [successMessage, setSuccessMessage] = useState('');
   const [fieldErrors, setFieldErrors] = useState({});
+  const [sortField, setSortField] = useState(null);
+  const [sortAscending, setSortAscending] = useState(true);
+  const [filters, setFilters] = useState({
+    description: '',
+    state: '',
+    clientId: '',
+    minValue: '',
+    maxValue: '',
+    startDate: '',
+    endDate: ''
+  });
 
+
+  
+
+  const token = localStorage.getItem('token');
+
+  // Definir o cabeçalho Authorization
+  const axiosConfig = {
+    headers: {
+      Authorization: `Bearer ${token}`, // Adicionar o token JWT
+    },
+  };
+
+
+const applyFilters = () => {
+    let filtered = [...pedidos];
+
+    if (filters.description) {
+      filtered = filtered.filter(pedido => 
+        pedido.description.toLowerCase().includes(filters.description.toLowerCase())
+      );
+    }
+
+    if (filters.state) {
+      filtered = filtered.filter(pedido => 
+        pedido.state.toLowerCase().includes(filters.state.toLowerCase())
+      );
+    }
+
+    if (filters.clientId) {
+      filtered = filtered.filter(pedido => 
+        pedido.fkClientId === filters.clientId
+      );
+    }
+
+    if (filters.minValue) {
+      filtered = filtered.filter(pedido => 
+        pedido.totalValue >= parseFloat(filters.minValue)
+      );
+    }
+
+    if (filters.maxValue) {
+      filtered = filtered.filter(pedido => 
+        pedido.totalValue <= parseFloat(filters.maxValue)
+      );
+    }
+
+    if (filters.startDate) {
+      filtered = filtered.filter(pedido => 
+        new Date(pedido.shippingDate) >= new Date(filters.startDate)
+      );
+    }
+
+    if (filters.endDate) {
+      filtered = filtered.filter(pedido => 
+        new Date(pedido.shippingDate) <= new Date(filters.endDate)
+      );
+    }
+
+    setFilteredPedidos(filtered);
+  };
+
+  useEffect(() => {
+    applyFilters();
+  }, [filters, pedidos]);
+
+   const handleFilterChange = (field, value) => {
+    setFilters(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const clearFilters = () => {
+    setFilters({
+      description: '',
+      state: '',
+      clientId: '',
+      minValue: '',
+      maxValue: '',
+      startDate: '',
+      endDate: ''
+    });
+  };
+
+
+  
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         const [pedidosRes, usersRes, clientsRes, itemsRes, productsRes] = await Promise.all([
-          axios.get('http://localhost:5188/Order'),
-          axios.get('http://localhost:5188/User'),
-          axios.get('http://localhost:5188/Client'),
-          axios.get('http://localhost:5188/ItemOrder'),
-          axios.get('http://localhost:5188/Product')
+          axios.get('http://localhost:5188/Order', axiosConfig),
+          axios.get('http://localhost:5188/User', axiosConfig),
+          axios.get('http://localhost:5188/Client', axiosConfig),
+          axios.get('http://localhost:5188/ItemOrder', axiosConfig),
+          axios.get('http://localhost:5188/Product', axiosConfig)
         ]);
         setPedidos(pedidosRes.data);
         setUsers(usersRes.data);
         setClients(clientsRes.data);
         setItemsOrdem(itemsRes.data);
         setProducts(productsRes.data);
+        setFilteredPedidos(pedidosRes.data);
       } catch (err) {
         setError('Erro ao carregar dados');
       } finally {
@@ -54,19 +170,87 @@ const Pedidos = () => {
     fetchData();
   }, []);
 
+  
+
   const formatDate = (date) => date ? new Date(date).toISOString() : '';
+
+  const handleShippingDate = async (pedidoId) => {
+    try {
+      const currentDate = new Date().toISOString();
+      await axios.put(`http://localhost:5188/Order/${pedidoId}`, {
+        shippingDate: currentDate,
+        state: OrderState.ENVIADO // Now using 1 for Enviado
+      }, axiosConfig);
+      
+      const updatedPedidos = pedidos.map((pedido) =>
+        pedido.id === pedidoId 
+          ? { ...pedido, shippingDate: currentDate, state: OrderState.ENVIADO }
+          : pedido
+      );
+      setPedidos(updatedPedidos);
+      setFilteredPedidos(updatedPedidos);
+      setSuccessMessage('Pedido marcado como enviado com sucesso!');
+      
+      setTimeout(() => {
+        setSuccessMessage('');
+      }, 3000);
+    } catch (error) {
+      setError('Erro ao atualizar o status do pedido');
+    }
+  };
+
+  const renderStateSelect = () => (
+    <label>
+      Estado
+      <select
+        value={editingPedido ? editingPedido.state : newPedido.state}
+        onChange={(e) => {
+          const value = parseInt(e.target.value);
+          if (editingPedido) {
+            handleInputChange('state', value);
+          } else {
+            handleNewInputChange('state', value);
+          }
+        }}
+      >
+        {Object.entries(OrderStateLabels).map(([value, label]) => (
+          <option key={value} value={value}>
+            {label}
+          </option>
+        ))}
+      </select>
+      {fieldErrors.state && <span className={styles.error}>{fieldErrors.state}</span>}
+    </label>
+  );
 
   const calculateTotalValue = (items, discount) => {
     const total = items.reduce((total, item) => total + (item.quantity * item.itemValue), 0);
-    return total - (total * (discount / 100)); // Aplica o desconto percentual
+    return total - (total * (discount / 100)); 
   };
+
+  const handleSort = (field) => {
+  setSortField(field);
+  setSortAscending(!sortAscending); 
+
+  const sortedPedidos = [...pedidos].sort((a, b) => {
+    if (a[field] < b[field]) {
+      return sortAscending ? -1 : 1;
+    }
+    if (a[field] > b[field]) {
+      return sortAscending ? 1 : -1;
+    }
+    return 0;
+  });
+
+  setPedidos(sortedPedidos);
+};
 
   const handleInputChange = (field, value) => {
     setEditingPedido(prev => {
       const updatedPedido = { ...prev, [field]: value };
       return {
         ...updatedPedido,
-        totalValue: calculateTotalValue(updatedPedido.items, updatedPedido.discount) // Atualiza o totalValue
+        totalValue: calculateTotalValue(updatedPedido.items, updatedPedido.discount) 
       };
     });
   };
@@ -76,7 +260,7 @@ const Pedidos = () => {
       const updatedPedido = { ...prev, [field]: value };
       return {
         ...updatedPedido,
-        totalValue: calculateTotalValue(updatedPedido.items, updatedPedido.discount) // Atualiza o totalValue
+        totalValue: calculateTotalValue(updatedPedido.items, updatedPedido.discount) 
       };
     });
   };
@@ -127,10 +311,8 @@ const Pedidos = () => {
 
   const handleSave = async (pedidoId) => {
   try {
-    // Limpa erros anteriores
     setFieldErrors({});
 
-    // Valida os campos
     const errors = {};
     if (!editingPedido.description) errors.description = 'Descrição é obrigatória';
     if (!editingPedido.fkClientId) errors.fkClientId = 'Cliente é obrigatório';
@@ -140,7 +322,6 @@ const Pedidos = () => {
     if (!editingPedido.state) errors.state = 'Estado é obrigatório';
     if (editingPedido.nInstallments < 1 || editingPedido.nInstallments > 36) errors.nInstallments = 'Número de parcelas deve estar entre 1 e 36';
     
-    // Se houver erros, atualize o estado e não envie a requisição
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors);
       return;
@@ -152,11 +333,11 @@ const Pedidos = () => {
       expectedDeliveryDate: formatDate(editingPedido.expectedDeliveryDate)
     };
 
-    await axios.put(`http://localhost:5188/Order/${pedidoId}`, formattedPedido);
-    const response = await axios.get('http://localhost:5188/Order');
+    await axios.put(`http://localhost:5188/Order/${pedidoId}`, formattedPedido, axiosConfig);
+    const response = await axios.get('http://localhost:5188/Order', axiosConfig);
     setPedidos(response.data);
     setEditingPedido(null);
-    setShowForm(true);  // Não feche o modal
+    setShowForm(true);
     setSuccessMessage('Pedido salvo com sucesso!');
   } catch (err) {
     setError('Erro ao salvar pedido');
@@ -165,7 +346,7 @@ const Pedidos = () => {
 
   const handleDelete = async (id) => {
     try {
-      await axios.delete(`http://localhost:5188/Order/${id}`);
+      await axios.delete(`http://localhost:5188/Order/${id}`, axiosConfig);
       setPedidos(prev => prev.filter(pedido => pedido.id !== id));
       setConfirmDelete(null);
     } catch (err) {
@@ -180,65 +361,68 @@ const Pedidos = () => {
   };
 
   const handleCreate = async () => {
-  try {
-    // Limpa erros anteriores
-    setFieldErrors({});
+    try {
+      setFieldErrors({});
+      const errors = {};
+      if (!newPedido.description) errors.description = 'Descrição é obrigatória';
+      if (!newPedido.fkClientId) errors.fkClientId = 'Cliente é obrigatório';
+      if (!newPedido.shippingDate) errors.shippingDate = 'Data de envio é obrigatória';
+      if (!newPedido.expectedDeliveryDate) errors.expectedDeliveryDate = 'Data de entrega prevista é obrigatória';
+      if (newPedido.expectedDeliveryDate < newPedido.shippingDate) errors.expectedDeliveryDate = 'Data de entrega prevista não pode ser menor que a data de envio';
+      if (newPedido.nInstallments < 1 || newPedido.nInstallments > 36) errors.nInstallments = 'Número de parcelas deve estar entre 1 e 36';
+      
+      if (Object.keys(errors).length > 0) {
+        setFieldErrors(errors);
+        return;
+      }
 
-    // Valida os campos
-    const errors = {};
-    if (!newPedido.description) errors.description = 'Descrição é obrigatória';
-    if (!newPedido.fkClientId) errors.fkClientId = 'Cliente é obrigatório';
-    if (!newPedido.shippingDate) errors.shippingDate = 'Data de envio é obrigatória';
-    if (!newPedido.expectedDeliveryDate) errors.expectedDeliveryDate = 'Data de entrega prevista é obrigatória';
-    if (newPedido.expectedDeliveryDate < newPedido.shippingDate) errors.expectedDeliveryDate = 'Data de entrega prevista não pode ser menor que a data de envio';
-    if (!newPedido.state) errors.state = 'Estado é obrigatório';
-    if (newPedido.nInstallments < 1 || newPedido.nInstallments > 36) errors.nInstallments = 'Número de parcelas deve estar entre 1 e 36';
-    
-    // Se houver erros, atualize o estado e não envie a requisição
-    if (Object.keys(errors).length > 0) {
-      setFieldErrors(errors);
-      return;
-    }
+      const formattedPedido = {
+        ...newPedido,
+        state: OrderState.AGUARDANDO_ENVIO, // Always start with state 0
+        shippingDate: formatDate(newPedido.shippingDate),
+        expectedDeliveryDate: formatDate(newPedido.expectedDeliveryDate)
+      };
 
-    const formattedPedido = {
-      ...newPedido,
-      shippingDate: formatDate(newPedido.shippingDate),
-      expectedDeliveryDate: formatDate(newPedido.expectedDeliveryDate)
-    };
+      const response = await axios.post('http://localhost:5188/Order', formattedPedido, axiosConfig);
+      const createdPedido = response.data;
 
-    const response = await axios.post('http://localhost:5188/Order', formattedPedido);
-    const createdPedido = response.data;
+      for (const item of newPedido.items) {
+        await axios.post('http://localhost:5188/ItemOrder', {
+          ...item,
+          fkOrderId: createdPedido.id
+        }, axiosConfig);
+      }
 
-    for (const item of newPedido.items) {
-      await axios.post('http://localhost:5188/ItemOrder', {
-        ...item,
-        fkOrderId: createdPedido.id
+      const pedidosResponse = await axios.get('http://localhost:5188/Order', axiosConfig);
+      const itemsResponse = await axios.get('http://localhost:5188/ItemOrder', axiosConfig);
+      setPedidos(pedidosResponse.data);
+      setItemsOrdem(itemsResponse.data);
+      setFilteredPedidos(pedidosResponse.data);
+      
+      setNewPedido({
+        description: '',
+        totalValue: 0,
+        discount: 0,
+        shippingDate: '',
+        expectedDeliveryDate: '',
+        state: 'Envio Pendente',
+        nInstallments: '',
+        fkUserId: '',
+        fkClientId: '',
+        items: []
       });
+      
+      setShowForm(false);
+      setSuccessMessage('Pedido criado com sucesso!');
+      
+      // Limpar a mensagem de sucesso após 3 segundos
+      setTimeout(() => {
+        setSuccessMessage('');
+      }, 3000);
+    } catch (err) {
+      setError('Erro ao criar pedido');
     }
-
-    const pedidosResponse = await axios.get('http://localhost:5188/Order');
-    const itemsResponse = await axios.get('http://localhost:5188/ItemOrder');
-    setPedidos(pedidosResponse.data);
-    setItemsOrdem(itemsResponse.data);
-    setNewPedido({
-      description: '',
-      totalValue: 0,
-      discount: 0,
-      shippingDate: '',
-      expectedDeliveryDate: '',
-      state: '',
-      nInstallments: '',
-      fkUserId: '',
-      fkClientId: '',
-      items: []
-    });
-    setShowForm(true);  // Não feche o modal
-    setSuccessMessage('Pedido criado com sucesso!');
-  } catch (err) {
-    setError('Erro ao criar pedido');
-  }
-  setShowForm(false);
-};
+  };
 
   const getUserNameById = (userId) => {
     const user = users.find(user => user.id === userId);
@@ -262,24 +446,123 @@ const Pedidos = () => {
   if (loading) return <p>Carregando...</p>;
   if (error) return <p className={styles.error}>{error}</p>;
 
-  return (
+   return (
     <div className={styles.container}>
       <div className={styles.header}>
         <h1>Pedidos</h1>
+        <button onClick={() => window.location.href = 'https://slime-goose-9d2.notion.site/PEDIDOS-12df55e7219b805bb807c77ae3ba10f1'} 
+          className={styles.helpButton}>
+          <span>?</span>
+        </button>
         <button className={styles.createButton} onClick={() => setShowForm(true)}>Criar Pedido</button>
       </div>
 
       {successMessage && <p className={styles.successMessage}>{successMessage}</p>}
 
+      <div className={styles.filtersSection}>
+        <h3>Filtros</h3>
+        <div className={styles.filtersGrid}>
+          <div className={styles.filterItem}>
+            <input
+              type="text"
+              placeholder="Filtrar por descrição"
+              value={filters.description}
+              onChange={(e) => handleFilterChange('description', e.target.value)}
+              className={styles.filterInput}
+            />
+          </div>
+
+          <div className={styles.filterItem}>
+            <input
+              type="text"
+              placeholder="Filtrar por estado"
+              value={filters.state}
+              onChange={(e) => handleFilterChange('state', e.target.value)}
+              className={styles.filterInput}
+            />
+          </div>
+
+          <div className={styles.filterItem}>
+            <select
+              value={filters.clientId}
+              onChange={(e) => handleFilterChange('clientId', e.target.value)}
+              className={styles.filterSelect}
+            >
+              <option value="">Todos os clientes</option>
+              {clients.map(client => (
+                <option key={client.id} value={client.id}>{client.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className={styles.filterItem}>
+            <input
+              type="number"
+              placeholder="Valor mínimo"
+              value={filters.minValue}
+              onChange={(e) => handleFilterChange('minValue', e.target.value)}
+              className={styles.filterInput}
+            />
+          </div>
+
+          <div className={styles.filterItem}>
+            <input
+              type="number"
+              placeholder="Valor máximo"
+              value={filters.maxValue}
+              onChange={(e) => handleFilterChange('maxValue', e.target.value)}
+              className={styles.filterInput}
+            />
+          </div>
+
+          <div className={styles.filterItem}>
+            <input
+              type="date"
+              value={filters.startDate}
+              onChange={(e) => handleFilterChange('startDate', e.target.value)}
+              className={styles.filterInput}
+            />
+          </div>
+
+          <div className={styles.filterItem}>
+            <input
+              type="date"
+              value={filters.endDate}
+              onChange={(e) => handleFilterChange('endDate', e.target.value)}
+              className={styles.filterInput}
+            />
+          </div>
+
+          <button onClick={clearFilters} className={styles.clearFiltersButton}>
+            Limpar Filtros
+          </button>
+        </div>
+      </div>
+
       {showForm && (
         <div className={styles.overlay}>
           <div className={styles.modal}>
             <div className={styles.modalHeader}>
+              {renderStateSelect()}
               <h2>{editingPedido ? 'Editar Pedido' : 'Criar Pedido'}</h2>
               <button className={styles.closeButton} onClick={() => { setShowForm(false); setEditingPedido(null); }}>×</button>
             </div>
 
             <div className={styles.form}>
+              
+<label>
+  Cliente
+  <select
+    value={editingPedido ? editingPedido.fkClientId : newPedido.fkClientId}
+    onChange={(e) => (editingPedido ? handleInputChange('fkClientId', e.target.value) : handleNewInputChange('fkClientId', e.target.value))}
+  >
+    <option value="">Selecione um Cliente</option>
+    {clients.map(client => (
+      <option key={client.id} value={client.id}>{client.name}</option>
+    ))}
+  </select>
+  {fieldErrors.fkClientId && <span className={styles.error}>{fieldErrors.fkClientId}</span>}
+</label>
               <h3>Itens do Pedido</h3>
               {editingPedido ? (
                 editingPedido.items.map((item, index) => (
@@ -338,13 +621,12 @@ const Pedidos = () => {
     onChange={(e) => {
       const value = e.target.value;
 
-      // Permitir apenas números entre 0 e 100, ou vazio para permitir edição temporária
+      // Permitir apenas números entre 0 e 100
       if (value === '' || (Number(value) >= 0 && Number(value) <= 100)) {
         editingPedido ? handleInputChange('discount', value) : handleNewInputChange('discount', value);
       }
     }}
     onBlur={(e) => {
-      // Garante que o valor final seja entre 0 e 100 ao sair do campo
       let finalValue = Number(e.target.value);
       if (finalValue < 0) finalValue = 0;
       if (finalValue > 100) finalValue = 100;
@@ -354,20 +636,7 @@ const Pedidos = () => {
   />
 </label>
 
-
-<label>
-  Cliente
-  <select
-    value={editingPedido ? editingPedido.fkClientId : newPedido.fkClientId}
-    onChange={(e) => (editingPedido ? handleInputChange('fkClientId', e.target.value) : handleNewInputChange('fkClientId', e.target.value))}
-  >
-    <option value="">Selecione um Cliente</option>
-    {clients.map(client => (
-      <option key={client.id} value={client.id}>{client.name}</option>
-    ))}
-  </select>
-  {fieldErrors.fkClientId && <span className={styles.error}>{fieldErrors.fkClientId}</span>}
-</label>
+<h3>Total: {editingPedido ? calculateTotalValue(editingPedido.items, editingPedido.discount) : calculateTotalValue(newPedido.items, newPedido.discount)}</h3>
 
               
 <label>
@@ -425,7 +694,7 @@ const Pedidos = () => {
       const value = e.target.value;
 
       // Verifica se o valor é um número entre 1 e 36
-      if (/^\d*$/.test(value)) { // Permite apenas dígitos
+      if (/^\d*$/.test(value)) {
         const parsedValue = parseInt(value, 10);
         if (!isNaN(parsedValue) && parsedValue <= 36 && parsedValue >= 1) {
           if (editingPedido) {
@@ -434,7 +703,6 @@ const Pedidos = () => {
             handleNewInputChange('nInstallments', value);
           }
         } else if (value === '') {
-          // Se o campo estiver vazio, atualiza normalmente para permitir a remoção do valor
           if (editingPedido) {
             handleInputChange('nInstallments', value);
           } else {
@@ -445,18 +713,7 @@ const Pedidos = () => {
     }}
   />
 </label>
-              <label>
-                Usuário
-                <select
-                  value={editingPedido ? editingPedido.fkUserId : newPedido.fkUserId}
-                  onChange={(e) => (editingPedido ? handleInputChange('fkUserId', e.target.value) : handleNewInputChange('fkUserId', e.target.value))}
-                >
-                  <option value="">Selecione um Usuário</option>
-                  {users.map(user => (
-                    <option key={user.id} value={user.id}>{user.username}</option>
-                  ))}
-                </select>
-              </label>
+
               
 <label>
   Descrição
@@ -468,13 +725,6 @@ const Pedidos = () => {
   />
   {fieldErrors.description && <span className={styles.error}>{fieldErrors.description}</span>}
 </label>
-              
-
-              
-
-             
-              <h3>Total: {editingPedido ? calculateTotalValue(editingPedido.items, editingPedido.discount) : calculateTotalValue(newPedido.items, newPedido.discount)}</h3>
-
               <button className={styles.saveButton} onClick={editingPedido ? () => handleSave(editingPedido.id) : handleCreate}>
                 {editingPedido ? 'Salvar' : 'Criar'}
               </button>
@@ -482,47 +732,60 @@ const Pedidos = () => {
           </div>
         </div>
       )}
-
-      <table className={styles.table}>
-        <thead>
-          <tr>
-            <th>Descrição</th>
-            <th>Data de Envio</th>
-            <th>Data de Entrega Prevista</th>
-            <th>Estado</th>
-            <th>Parcelas</th>
-            <th>Cliente</th>
-            <th>Total{" (R$)"}</th>
-            <th>Itens do pedido</th>
-            
-            <th>Ações</th>
-          </tr>
-        </thead>
-        <tbody>
-          {pedidos.map(pedido => (
-            <tr key={pedido.id}>
-              <td>{pedido.description}</td>
-              <td>{new Date(pedido.shippingDate).toLocaleDateString('pt-BR')}</td>
-              <td>{new Date(pedido.shippingDate).toLocaleDateString('pt-BR')}</td>
-              <td>{pedido.state}</td>
-              <td>{pedido.nInstallments}</td>
-              <td>{getClientNameById(pedido.fkClientId)}</td>
-              <td>{pedido.totalValue}</td>
-              <td>
-                {filterItemsOrdemByPedido(pedido.id).map((item) => (
-                  <div key={item.id}>
-                    {getProductDetails(item.fkProductId)} (Quantidade: {item.quantity}, Preço: {item.itemValue})
-                  </div>
-                ))}
-              </td>
-              <td>
+<div className={styles.tableContainer}>
+        <table className={styles.table}>
+          <thead>
+            <tr>
+              <th>Descrição</th>
+              <th>Data de Envio</th>
+              <th>Data de Entrega Prevista</th>
+              <th>Estado</th>
+              <th>Parcelas</th>
+              <th>Cliente</th>
+              <th>
+                <button onClick={() => handleSort('totalValue')}>
+                  Total {'(R$)'} {sortField === 'description' && (sortAscending ? '⬆️' : '⬇️')}
+                </button>
+              </th>
+              <th>Itens do pedido</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredPedidos.map(pedido => (
+              // Resto do código da tabela permanece o mesmo...
+              <tr key={pedido.id}>
+                <td>{pedido.description}</td>
+                <td>{new Date(pedido.shippingDate).toLocaleDateString('pt-BR')}</td>
+                <td>{new Date(pedido.shippingDate).toLocaleDateString('pt-BR')}</td>
+                <td>{getStateLabel(pedido.state)}</td>
+                <td>{pedido.nInstallments}</td>
+                <td>{getClientNameById(pedido.fkClientId)}</td>
+                <td>{pedido.totalValue}</td>
+                <td>
+                  {filterItemsOrdemByPedido(pedido.id).map((item) => (
+                    <div key={item.id}>
+                      {getProductDetails(item.fkProductId)} (Quantidade: {item.quantity}, Preço: {item.itemValue})
+                    </div>
+                  ))}
+                </td>
+                 <td>
                 <button className={styles.editButton} onClick={() => handleEdit(pedido)}>Editar</button>
                 <button className={styles.deleteButton} onClick={() => setConfirmDelete(pedido.id)}>Excluir</button>
+                {pedido.state === OrderState.AGUARDANDO_ENVIO && (
+                  <button 
+                    className={styles.shippingButton}
+                    onClick={() => handleShippingDate(pedido.id)}
+                  >
+                    Realizar envio
+                  </button>
+                )}
               </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
       {confirmDelete && (
         <div className={styles.overlay}>

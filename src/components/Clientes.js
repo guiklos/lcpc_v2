@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import Modal from 'react-modal';
-import InputMask from 'react-input-mask'; // Importar a biblioteca
+import InputMask from 'react-input-mask';
 import styles from '../Styles/Clientes.module.css';
 
-Modal.setAppElement('#root'); // Ajuste para o id do elemento root no seu HTML
+Modal.setAppElement('#root');
 
 const Clientes = () => {
   const [clients, setClients] = useState([]);
@@ -16,13 +16,24 @@ const Clientes = () => {
   const [confirmDeleteIsOpen, setConfirmDeleteIsOpen] = useState(false);
   const [clientToDelete, setClientToDelete] = useState(null);
   const [cities, setCities] = useState([]);
-  const [emailError, setEmailError] = useState(null); // Estado para armazenar erro de email
+  const [emailError, setEmailError] = useState(null);
+  const [sortOrder, setSortOrder] = useState('asc');
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const token = localStorage.getItem('token');
+
+  const axiosConfig = {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  };
 
   useEffect(() => {
     const fetchClients = async () => {
       try {
-        const response = await axios.get('http://localhost:5188/Client');
-        setClients(response.data);
+        const response = await axios.get('http://localhost:5188/Client', axiosConfig);
+        const sortedClients = sortClientsByName(response.data, sortOrder);
+        setClients(sortedClients);
       } catch (err) {
         setError('Erro ao carregar os clientes');
       } finally {
@@ -32,7 +43,7 @@ const Clientes = () => {
 
     const fetchCities = async () => {
       try {
-        const response = await axios.get('http://localhost:5188/City');
+        const response = await axios.get('http://localhost:5188/City', axiosConfig);
         setCities(response.data);
       } catch (err) {
         setError('Erro ao carregar as cidades');
@@ -41,7 +52,19 @@ const Clientes = () => {
 
     fetchClients();
     fetchCities();
-  }, []);
+  }, [sortOrder]);
+
+  const toggleSortOrder = () => {
+    const newOrder = sortOrder === 'asc' ? 'desc' : 'asc';
+    setSortOrder(newOrder);
+  };
+
+  const sortClientsByName = (clientsArray, order) => {
+    return [...clientsArray].sort((a, b) => {
+      const comparison = a.name.localeCompare(b.name);
+      return order === 'asc' ? comparison : -comparison;
+    });
+  };
 
   const openModal = (client = null) => {
     setCurrentClient(client || {
@@ -53,11 +76,11 @@ const Clientes = () => {
       phone: '',
       email: '',
       cnpj: '',
-      fkCityId: ''
+      fkCityId: '',
     });
     setIsEditing(!!client);
     setModalIsOpen(true);
-    setEmailError(null); // Limpar erro de email ao abrir o modal
+    setEmailError(null);
   };
 
   const closeModal = () => {
@@ -78,13 +101,11 @@ const Clientes = () => {
   const handleInputChange = (field, value) => {
     setCurrentClient((prevClient) => ({
       ...prevClient,
-      [field]: value
+      [field]: value,
     }));
   };
 
-  // Função para validar o formato do email
   const isValidEmail = (email) => {
-    // Expressão regular para validação de email
     const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailPattern.test(email);
   };
@@ -96,21 +117,20 @@ const Clientes = () => {
     }
 
     try {
-      // Remover máscara dos campos antes de enviar
       const cleanedClient = {
         ...currentClient,
         phone: removeMask(currentClient.phone),
-        cnpj: removeMask(currentClient.cnpj)
+        cnpj: removeMask(currentClient.cnpj),
       };
 
       if (isEditing) {
-        await axios.put(`http://localhost:5188/Client/${currentClient.id}`, cleanedClient);
+        await axios.put(`http://localhost:5188/Client/${currentClient.id}`, cleanedClient, axiosConfig);
       } else {
-        await axios.post('http://localhost:5188/Client', cleanedClient);
+        await axios.post('http://localhost:5188/Client', cleanedClient, axiosConfig);
       }
 
-      const response = await axios.get('http://localhost:5188/Client');
-      setClients(response.data);
+      const response = await axios.get('http://localhost:5188/Client', axiosConfig);
+      setClients(sortClientsByName(response.data, sortOrder));
       closeModal();
     } catch (err) {
       setError('Erro ao salvar cliente');
@@ -119,18 +139,18 @@ const Clientes = () => {
 
   const formatPhone = (phone) => {
     return phone
-      .replace(/\D/g, '') // Remove todos os caracteres não numéricos
-      .replace(/^(\d{2})(\d)/, '($1) $2') // Formata o DDD e o primeiro dígito
-      .replace(/(\d{4})(\d)/, '$1-$2') // Adiciona o hífen
-      .replace(/(\d{4})(\d)/, '$1-$2'); // Formata o restante
+      .replace(/\D/g, '')
+      .replace(/^(\d{2})(\d)/, '($1) $2')
+      .replace(/(\d{4})(\d)/, '$1-$2')
+      .replace(/(\d{4})(\d)/, '$1-$2');
   };
 
   const formatCNPJ = (cnpj) => {
     return cnpj
-      .replace(/\D/g, '') // Remove todos os caracteres não numéricos
-      .replace(/^(\d{2})(\d)/, '$1.$2') // Adiciona o primeiro ponto
-      .replace(/\.(\d{3})(\d)/, '.$1/$2') // Adiciona a barra
-      .replace(/(\d{4})(\d)/, '$1-$2'); // Adiciona o hífen
+      .replace(/\D/g, '')
+      .replace(/^(\d{2})(\d)/, '$1.$2')
+      .replace(/\.(\d{3})(\d)/, '.$1/$2')
+      .replace(/(\d{4})(\d)/, '$1-$2');
   };
 
   const removeMask = (value) => {
@@ -140,7 +160,7 @@ const Clientes = () => {
   const handleDelete = async () => {
     if (clientToDelete) {
       try {
-        await axios.delete(`http://localhost:5188/Client/${clientToDelete.id}`);
+        await axios.delete(`http://localhost:5188/Client/${clientToDelete.id}`, axiosConfig);
         setClients((prevClients) => prevClients.filter((client) => client.id !== clientToDelete.id));
         closeConfirmDeleteModal();
       } catch (err) {
@@ -149,6 +169,11 @@ const Clientes = () => {
     }
   };
 
+  // Função para filtrar clientes pelo nome
+  const filteredClients = clients.filter(client =>
+    client.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   if (loading) return <p>Carregando...</p>;
   if (error) return <p>{error}</p>;
 
@@ -156,14 +181,40 @@ const Clientes = () => {
     <div className={styles.container}>
       <div className={styles.header}>
         <h1>Clientes</h1>
+        <button
+          onClick={() =>
+            window.location.href =
+              'https://slime-goose-9d2.notion.site/CLIENTES-128f55e7219b8081b0d2c0d051357dd9'
+          }
+          className={styles.helpButton}
+        >
+          <span className={styles.icon}>?</span>
+        </button>
       </div>
-      <button className={styles.createButton} onClick={() => openModal()}>Adicionar Novo Cliente</button>
+      <button className={styles.createButton} onClick={() => openModal()}>
+        Adicionar Novo Cliente
+      </button>
+
+      <div className={styles.searchContainer}>
+        <input
+          type="text"
+          placeholder="Buscar por nome..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className={styles.searchInput}
+        />
+      </div>
 
       <div className={styles.tableContainer}>
         <table className={styles.table}>
           <thead>
             <tr>
-              <th>Nome</th>
+              <th>
+                Nome
+                <button onClick={toggleSortOrder} className={styles.sortButton}>
+                  {sortOrder === 'asc' ? '↓' : '↑'}
+                </button>
+              </th>
               <th>Rua</th>
               <th>Bairro</th>
               <th>Número</th>
@@ -176,9 +227,9 @@ const Clientes = () => {
             </tr>
           </thead>
           <tbody>
-            {clients.map((client) => {
-              // Encontrar o nome da cidade usando fkCityId
-              const cityName = cities.find(city => city.id === client.fkCityId)?.name || 'Não especificado';
+            {filteredClients.map((client) => {
+              const cityName =
+                cities.find((city) => city.id === client.fkCityId)?.name || 'Não especificado';
 
               return (
                 <tr key={client.id}>
@@ -192,8 +243,15 @@ const Clientes = () => {
                   <td>{formatCNPJ(client.cnpj)}</td>
                   <td>{cityName}</td>
                   <td>
-                    <button className={styles.editButton} onClick={() => openModal(client)}>Editar</button>
-                    <button className={styles.deleteButton} onClick={() => openConfirmDeleteModal(client)}>Excluir</button>
+                    <button className={styles.editButton} onClick={() => openModal(client)}>
+                      Editar
+                    </button>
+                    <button
+                      className={styles.deleteButton}
+                      onClick={() => openConfirmDeleteModal(client)}
+                    >
+                      Excluir
+                    </button>
                   </td>
                 </tr>
               );
@@ -210,81 +268,107 @@ const Clientes = () => {
         overlayClassName={styles.overlay}
       >
         <h2>{isEditing ? 'Editar Cliente' : 'Criar Cliente'}</h2>
-        <input
-          type="text"
-          placeholder="Nome"
-          value={currentClient?.name || ''}
-          onChange={(e) => handleInputChange('name', e.target.value)}
-        />
-        <input
-          type="text"
-          placeholder="Rua"
-          value={currentClient?.streetplace || ''}
-          onChange={(e) => handleInputChange('streetplace', e.target.value)}
-        />
-        <input
-          type="text"
-          placeholder="Bairro"
-          value={currentClient?.neighborhood || ''}
-          onChange={(e) => handleInputChange('neighborhood', e.target.value)}
-        />
-        <input
-          type="text"
-          placeholder="Número"
-          value={currentClient?.number || ''}
-          onChange={(e) => handleInputChange('number', e.target.value)}
-        />
-        <input
-          type="text"
-          placeholder="Complemento"
-          value={currentClient?.complement || ''}
-          onChange={(e) => handleInputChange('complement', e.target.value)}
-        />
-        <InputMask
-          mask="(99) 99999-9999"
-          placeholder="Telefone"
-          value={currentClient?.phone || ''}
-          onChange={(e) => handleInputChange('phone', e.target.value)}
-        />
-        <input
-          type="email"
-          placeholder="Email"
-          value={currentClient?.email || ''}
-          onChange={(e) => handleInputChange('email', e.target.value)}
-        />
-        {emailError && <p className={styles.error}>{emailError}</p>} {/* Exibe o erro de email */}
-        <InputMask
-          mask="99.999.999/9999-99"
-          placeholder="CNPJ"
-          value={currentClient?.cnpj || ''}
-          onChange={(e) => handleInputChange('cnpj', e.target.value)}
-        />
-        <select
-          value={currentClient?.fkCityId || ''}
-          onChange={(e) => handleInputChange('fkCityId', e.target.value)}
-        >
-          <option value="">Selecione a cidade</option>
-          {cities.map((city) => (
-            <option key={city.id} value={city.id}>
-              {city.name}
-            </option>
-          ))}
-        </select>
-        <button onClick={handleSave}>Salvar</button>
-        <button onClick={closeModal}>Cancelar</button>
+        <div className={styles.inputContainer}>
+          <input
+            type="text"
+            value={currentClient?.name || ''}
+            onChange={(e) => handleInputChange('name', e.target.value)}
+          />
+          <label>Nome</label>
+        </div>
+        <div className={styles.inputContainer}>
+          <InputMask
+            mask="(99) 99999-9999"
+            value={currentClient?.phone || ''}
+            onChange={(e) => handleInputChange('phone', e.target.value)}
+          />
+          <label>Telefone</label>
+        </div>
+        <div className={styles.inputContainer}>
+          <InputMask
+            mask="99.999.999/9999-99"
+            value={currentClient?.cnpj || ''}
+            onChange={(e) => handleInputChange('cnpj', e.target.value)}
+          />
+          <label>CNPJ</label>
+        </div>
+        <div className={styles.inputContainer}>
+          <input
+            type="text"
+            value={currentClient?.streetplace || ''}
+            onChange={(e) => handleInputChange('streetplace', e.target.value)}
+          />
+          <label>Rua</label>
+        </div>
+        <div className={styles.inputContainer}>
+          <input
+            type="text"
+            value={currentClient?.neighborhood || ''}
+            onChange={(e) => handleInputChange('neighborhood', e.target.value)}
+          />
+          <label>Bairro</label>
+        </div>
+        <div className={styles.inputContainer}>
+          <input
+            type="text"
+            value={currentClient?.number || ''}
+            onChange={(e) => handleInputChange('number', e.target.value)}
+          />
+          <label>Número</label>
+        </div>
+        <div className={styles.inputContainer}>
+          <input
+            type="text"
+            value={currentClient?.complement || ''}
+            onChange={(e) => handleInputChange('complement', e.target.value)}
+          />
+          <label>Complemento</label>
+        </div>
+        <div className={styles.inputContainer}>
+          <input
+            type="email"
+            value={currentClient?.email || ''}
+            onChange={(e) => handleInputChange('email', e.target.value)}
+          />
+          <label>Email</label>
+          {emailError && <p className={styles.error}>{emailError}</p>}
+        </div>
+        <div className={styles.inputContainer}>
+          <select
+            value={currentClient?.fkCityId || ''}
+            onChange={(e) => handleInputChange('fkCityId', e.target.value)}
+          >
+            <option value="">Selecione a cidade</option>
+            {cities.map((city) => (
+              <option key={city.id} value={city.id}>
+                {city.name}
+              </option>
+            ))}
+          </select>
+          <label>Cidade</label>
+        </div>
+        <button onClick={handleSave} className={styles.saveButton}>
+          {isEditing ? 'Salvar' : 'Criar'}
+        </button>
+        <button onClick={closeModal} className={styles.cancelButton}>
+          Cancelar
+        </button>
       </Modal>
 
       <Modal
         isOpen={confirmDeleteIsOpen}
         onRequestClose={closeConfirmDeleteModal}
-        contentLabel="Confirmar Exclusão"
+        contentLabel="Excluir Cliente"
         className={styles.modal}
         overlayClassName={styles.overlay}
       >
-        <h2>Confirmar Exclusão</h2>
-        <p>Você tem certeza que deseja excluir este cliente?</p>
-        <button onClick={handleDelete}>Sim, excluir</button>
-        <button onClick={closeConfirmDeleteModal}>Cancelar</button>
+        <h2>Tem certeza que deseja excluir o cliente {clientToDelete?.name}?</h2>
+        <button onClick={handleDelete} className={styles.deleteConfirmButton}>
+          Excluir
+        </button>
+        <button onClick={closeConfirmDeleteModal} className={styles.cancelButton}>
+          Cancelar
+        </button>
       </Modal>
     </div>
   );
