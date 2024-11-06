@@ -58,6 +58,51 @@ const Pedidos = () => {
     endDate: ''
   });
 
+   const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [paginatedData, setPaginatedData] = useState([]);
+  const [totalPages, setTotalPages] = useState(0);
+
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentItems = filteredPedidos.slice(indexOfFirstItem, indexOfLastItem);
+  const paginate = (pageNumber) => setCurrentPage(pageNumber);
+
+  useEffect(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    setPaginatedData(filteredPedidos.slice(startIndex, endIndex));
+    setTotalPages(Math.ceil(filteredPedidos.length / itemsPerPage));
+    
+    // Reset to first page if current page would be out of bounds
+    if (currentPage > Math.ceil(filteredPedidos.length / itemsPerPage)) {
+      setCurrentPage(1);
+    }
+  }, [filteredPedidos, currentPage, itemsPerPage]);
+
+  // Pagination controls
+  const handlePageChange = (newPage) => {
+    setCurrentPage(newPage);
+  };
+
+  const handleItemsPerPageChange = (event) => {
+    const newItemsPerPage = parseInt(event.target.value);
+    setItemsPerPage(newItemsPerPage);
+    setCurrentPage(1); // Reset to first page when changing items per page
+  };
+
+  const nextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage(currentPage + 1);
+    }
+  };
+
+   const prevPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
+
   const getSortedClients = () => {
     return [...clients].sort((a, b) => a.name.localeCompare(b.name));
   };
@@ -76,7 +121,7 @@ const Pedidos = () => {
   };
 
 
-const applyFilters = () => {
+ const applyFilters = () => {
     let filtered = [...pedidos];
 
     if (filters.description) {
@@ -121,6 +166,9 @@ const applyFilters = () => {
       );
     }
 
+    // Always maintain chronological order (most recent first) after applying filters
+    filtered.sort((a, b) => new Date(b.shippingDate) - new Date(a.shippingDate));
+    
     setFilteredPedidos(filtered);
   };
 
@@ -160,12 +208,18 @@ const applyFilters = () => {
           axios.get('http://localhost:5188/ItemOrder', axiosConfig),
           axios.get('http://localhost:5188/Product', axiosConfig)
         ]);
-        setPedidos(pedidosRes.data);
+
+        // Sort orders by creation date in descending order (most recent first)
+        const sortedPedidos = pedidosRes.data.sort((a, b) => {
+          return new Date(b.shippingDate) - new Date(a.shippingDate);
+        });
+
+        setPedidos(sortedPedidos);
+        setFilteredPedidos(sortedPedidos);
         setUsers(usersRes.data);
         setClients(clientsRes.data);
         setItemsOrdem(itemsRes.data);
         setProducts(productsRes.data);
-        setFilteredPedidos(pedidosRes.data);
       } catch (err) {
         setError('Erro ao carregar dados');
       } finally {
@@ -728,7 +782,45 @@ const applyFilters = () => {
           </div>
         </div>
       )}
-<div className={styles.tableContainer}>
+
+      <div className={styles.paginationControls}>
+        <div className={styles.itemsPerPageControl}>
+          <label>
+            Itens por página:
+            <select 
+              value={itemsPerPage} 
+              onChange={handleItemsPerPageChange}
+              className={styles.itemsPerPageSelect}
+            >
+              <option value={5}>5</option>
+              <option value={10}>10</option>
+              <option value={20}>20</option>
+              <option value={50}>50</option>
+            </select>
+          </label>
+        </div>
+        <div className={styles.pageNavigation}>
+          <button 
+            onClick={() => handlePageChange(currentPage - 1)}
+            disabled={currentPage === 1}
+            className={styles.pageButton}
+          >
+            Anterior
+          </button>
+          <span className={styles.pageInfo}>
+            Página {currentPage} de {totalPages}
+          </span>
+          <button 
+            onClick={() => handlePageChange(currentPage + 1)}
+            disabled={currentPage === totalPages}
+            className={styles.pageButton}
+          >
+            Próxima
+          </button>
+        </div>
+      </div>
+
+      <div className={styles.tableContainer}>
         <table className={styles.table}>
           <thead>
             <tr>
@@ -748,12 +840,11 @@ const applyFilters = () => {
             </tr>
           </thead>
           <tbody>
-            {filteredPedidos.map(pedido => (
-              // Resto do código da tabela permanece o mesmo...
+            {paginatedData.map(pedido => (
               <tr key={pedido.id}>
                 <td>{pedido.description}</td>
                 <td>{new Date(pedido.shippingDate).toLocaleDateString('pt-BR')}</td>
-                <td>{new Date(pedido.shippingDate).toLocaleDateString('pt-BR')}</td>
+                <td>{new Date(pedido.expectedDeliveryDate).toLocaleDateString('pt-BR')}</td>
                 <td>{getStateLabel(pedido.state)}</td>
                 <td>{pedido.nInstallments}</td>
                 <td>{getClientNameById(pedido.fkClientId)}</td>
@@ -765,23 +856,29 @@ const applyFilters = () => {
                     </div>
                   ))}
                 </td>
-                 <td>
-                <button className={styles.editButton} onClick={() => handleEdit(pedido)}>Editar</button>
-                <button className={styles.deleteButton} onClick={() => setConfirmDelete(pedido.id)}>Excluir</button>
-                {pedido.state === OrderState.AGUARDANDO_ENVIO && (
-                  <button 
-                    className={styles.shippingButton}
-                    onClick={() => handleShippingDate(pedido.id)}
-                  >
-                    Realizar envio
+                <td>
+                  <button className={styles.editButton} onClick={() => handleEdit(pedido)}>
+                    Editar
                   </button>
-                )}
-              </td>
+                  <button className={styles.deleteButton} onClick={() => setConfirmDelete(pedido.id)}>
+                    Excluir
+                  </button>
+                  {pedido.state === OrderState.AGUARDANDO_ENVIO && (
+                    <button 
+                      className={styles.shippingButton}
+                      onClick={() => handleShippingDate(pedido.id)}
+                    >
+                      Realizar envio
+                    </button>
+                  )}
+                </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+
+
 
       {confirmDelete && (
         <div className={styles.overlay}>

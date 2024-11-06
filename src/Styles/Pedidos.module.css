@@ -486,3 +486,111 @@
      display: flex;
      flex-direction: column;
 }
+
+.pagination {
+     display: flex;
+     justify-content: center;
+     align-items: center;
+     margin-top: 20px;
+     gap: 10px;
+}
+
+.paginationButton {
+     padding: 8px 16px;
+     border: 1px solid #ddd;
+     border-radius: 4px;
+     background-color: white;
+     cursor: pointer;
+     transition: all 0.3s ease;
+}
+
+.paginationButton:disabled {
+     background-color: #f5f5f5;
+     cursor: not-allowed;
+     opacity: 0.6;
+}
+
+.paginationButton:hover:not(:disabled) {
+     background-color: #f0f0f0;
+}
+
+.pageNumbers {
+     display: flex;
+     gap: 5px;
+}
+
+.pageNumber {
+     padding: 8px 12px;
+     border: 1px solid #ddd;
+     border-radius: 4px;
+     background-color: white;
+     cursor: pointer;
+     transition: all 0.3s ease;
+}
+
+.pageNumber:hover {
+     background-color: #f0f0f0;
+}
+
+.activePage {
+     background-color: #007bff;
+     color: white;
+     border-color: #007bff;
+}
+
+.activePage:hover {
+     background-color: #0056b3;
+}
+
+.itemsPerPageSelect {
+     padding: 8px;
+     border: 1px solid #ddd;
+     border-radius: 4px;
+     margin-left: 15px;
+}
+
+.paginationControls {
+     display: flex;
+     justify-content: space-between;
+     align-items: center;
+     margin: 20px 0;
+     padding: 10px;
+     background-color: #f5f5f5;
+     border-radius: 4px;
+}
+
+.itemsPerPageControl {
+     display: flex;
+     align-items: center;
+     gap: 10px;
+}
+
+.itemsPerPageSelect {
+     padding: 5px;
+     border-radius: 4px;
+     border: 1px solid #ddd;
+}
+
+.pageNavigation {
+     display: flex;
+     align-items: center;
+     gap: 15px;
+}
+
+.pageButton {
+     padding: 5px 15px;
+     border: none;
+     border-radius: 4px;
+     background-color: #007bff;
+     color: white;
+     cursor: pointer;
+}
+
+.pageButton:disabled {
+     background-color: #cccccc;
+     cursor: not-allowed;
+}
+
+.pageInfo {
+     font-weight: 500;
+}
